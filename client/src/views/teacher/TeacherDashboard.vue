@@ -103,7 +103,7 @@ export default {
           const months = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara']
           chartData.value = {
             labels: sorted.map(m => `${months[m._id.month-1]}`),
-            datasets: [{ label: 'Saat', data: sorted.map(m => m.hours), backgroundColor: 'rgba(179,136,255,0.6)', borderColor: '#b388ff', borderWidth: 2, borderRadius: 12 }]
+            datasets: [{ label: 'Saat', data: sorted.map(m => m.hours), backgroundColor: 'rgba(77,182,172,0.6)', borderColor: '#4db6ac', borderWidth: 2, borderRadius: 12 }]
           }
         }
       } catch (err) { console.error(err) }

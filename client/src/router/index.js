@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
 // Auth Views
+import HomeView from '../views/HomeView.vue'
 import LoginView from '../views/auth/LoginView.vue'
 import RegisterView from '../views/auth/RegisterView.vue'
 import ForgotPasswordView from '../views/auth/ForgotPasswordView.vue'
@@ -25,25 +26,27 @@ const AdminDashboard = () => import('../views/admin/AdminDashboard.vue')
 const routes = [
   {
     path: '/',
-    redirect: '/login'
+    name: 'Home',
+    component: HomeView,
+    meta: { guest: true, authLayout: true }
   },
   {
     path: '/login',
     name: 'Login',
     component: LoginView,
-    meta: { guest: true }
+    meta: { guest: true, authLayout: true }
   },
   {
     path: '/register',
     name: 'Register',
     component: RegisterView,
-    meta: { guest: true }
+    meta: { guest: true, authLayout: true }
   },
   {
     path: '/forgot-password',
     name: 'ForgotPassword',
     component: ForgotPasswordView,
-    meta: { guest: true }
+    meta: { guest: true, authLayout: true }
   },
   {
     path: '/consent/:token',
@@ -71,6 +74,12 @@ const routes = [
   {
     path: '/student/activities/new',
     name: 'ActivityForm',
+    component: ActivityForm,
+    meta: { requiresAuth: true, role: 'student' }
+  },
+  {
+    path: '/student/activities/:id/edit',
+    name: 'ActivityEdit',
     component: ActivityForm,
     meta: { requiresAuth: true, role: 'student' }
   },

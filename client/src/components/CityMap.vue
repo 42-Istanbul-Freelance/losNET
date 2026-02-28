@@ -41,8 +41,8 @@ export default {
         const radius = 5 + Math.sqrt((city.totalHours || 0) / maxHours) * 15
         const circle = L.circleMarker(coords, {
           radius,
-          fillColor: '#b388ff',
-          color: '#6b5b95',
+          fillColor: '#4db6ac',
+          color: '#00897b',
           weight: 2,
           opacity: 1,
           fillOpacity: 0.6

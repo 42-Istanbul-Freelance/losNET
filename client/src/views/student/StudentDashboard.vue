@@ -25,6 +25,19 @@
       </div>
     </div>
 
+    <!-- Streak ve Sıralama satırı -->
+    <div class="info-strip">
+      <div class="info-chip streak-chip" v-if="streak.currentStreak > 0">
+        🔥 {{ streak.currentStreak }} hafta üst üste faaliyet!
+      </div>
+      <div class="info-chip streak-chip" v-else>
+        🌱 İlk streak'ını başlat!
+      </div>
+      <div class="info-chip rank-chip" v-if="ranking.rank">
+        🏅 Okulundaki sıralaman: <strong>{{ ranking.rank }}/{{ ranking.total }}</strong>
+      </div>
+    </div>
+
     <!-- Hedef ilerleme -->
     <div class="card target-card">
       <div class="card-title">🎯 Hedef İlerleme</div>
@@ -50,23 +63,38 @@
         </div>
       </div>
 
-      <!-- Son faaliyetler -->
+      <!-- Etkinlik türü dağılımı -->
       <div class="card">
-        <div class="card-title">📋 Son Faaliyetler</div>
-        <div v-if="recentActivities.length === 0" class="empty-state">
-          <p>Henüz faaliyet girişi yapılmamış</p>
-          <router-link to="/student/activities/new" class="btn btn-primary">İlk Faaliyetini Ekle</router-link>
+        <div class="card-title">🍩 Etkinlik Türü Dağılımı</div>
+        <div class="chart-container">
+          <Doughnut v-if="typeChartData" :data="typeChartData" :options="pieOptions" />
+          <p v-else class="empty-chart">Henüz onaylanmış faaliyet yok</p>
         </div>
-        <div v-else class="activity-list">
-          <div v-for="activity in recentActivities" :key="activity._id" class="activity-item">
-            <div class="activity-info">
-              <span class="activity-type">{{ getTypeLabel(activity.type) }}</span>
-              <span class="activity-hours">{{ activity.hours }} saat</span>
-            </div>
-            <div class="activity-meta">
-              <span>{{ formatDate(activity.date) }}</span>
-              <span class="status-badge" :class="'status-' + activity.status">{{ getStatusLabel(activity.status) }}</span>
-            </div>
+      </div>
+    </div>
+
+    <!-- Faaliyet Takvimi -->
+    <div class="card" style="margin-top: 16px;">
+      <div class="card-title">🗓️ Faaliyet Takvimi</div>
+      <ActivityCalendar />
+    </div>
+
+    <!-- Son faaliyetler -->
+    <div class="card" style="margin-top: 16px;">
+      <div class="card-title">📋 Son Faaliyetler</div>
+      <div v-if="recentActivities.length === 0" class="empty-state">
+        <p>Henüz faaliyet girişi yapılmamış</p>
+        <router-link to="/student/activities/new" class="btn btn-primary">İlk Faaliyetini Ekle</router-link>
+      </div>
+      <div v-else class="activity-list">
+        <div v-for="activity in recentActivities" :key="activity._id" class="activity-item">
+          <div class="activity-info">
+            <span class="activity-type">{{ getTypeLabel(activity.type) }}</span>
+            <span class="activity-hours">{{ activity.hours }} saat</span>
+          </div>
+          <div class="activity-meta">
+            <span>{{ formatDate(activity.date) }}</span>
+            <span class="status-badge" :class="'status-' + activity.status">{{ getStatusLabel(activity.status) }}</span>
           </div>
         </div>
       </div>
@@ -77,20 +105,24 @@
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { Bar } from 'vue-chartjs'
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js'
+import { Doughnut } from 'vue-chartjs'
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend } from 'chart.js'
 import { useAuthStore } from '../../stores/auth'
 import api from '../../services/api'
+import ActivityCalendar from '../../components/ActivityCalendar.vue'
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend)
 
 export default {
   name: 'StudentDashboard',
-  components: { Bar },
+  components: { Bar, Doughnut, ActivityCalendar },
   setup() {
     const authStore = useAuthStore()
     const hours = ref({})
     const recentActivities = ref([])
     const nextBadge = ref(null)
+    const streak = ref({ currentStreak: 0, totalWeeksActive: 0 })
+    const ranking = ref({ rank: null, total: 0 })
 
     const badgeInfo = {
       none: { emoji: '⭐', label: 'Başlangıç' },
@@ -133,10 +165,25 @@ export default {
         datasets: [{
           label: 'Saat',
           data: sorted.map(m => m.hours),
-          backgroundColor: 'rgba(179, 136, 255, 0.6)',
-          borderColor: '#b388ff',
+          backgroundColor: 'rgba(77, 182, 172, 0.6)',
+          borderColor: '#4db6ac',
           borderWidth: 2,
           borderRadius: 12
+        }]
+      }
+    })
+
+    const typeLabels = { seminer: 'Seminer', stant: 'Stant', bagis: 'Bağış', kermes: 'Kermes', bilinclenme: 'Bilinçlendirme', sosyal_medya: 'Sosyal Medya', farkindalik: 'Farkındalık', diger: 'Diğer' }
+    const typeColors = ['#4db6ac', '#ff9800', '#80cbc4', '#ffb74d', '#64b5f6', '#81d4fa', '#ffcc80', '#a8e6cf']
+
+    const typeChartData = computed(() => {
+      const byType = hours.value.byType || []
+      if (byType.length === 0) return null
+      return {
+        labels: byType.map(t => typeLabels[t._id] || t._id),
+        datasets: [{
+          data: byType.map(t => t.hours),
+          backgroundColor: typeColors.slice(0, byType.length)
         }]
       }
     })
@@ -148,36 +195,36 @@ export default {
       scales: { y: { beginAtZero: true } }
     }
 
-    const getTypeLabel = (type) => {
-      const labels = { seminer: 'Seminer', stant: 'Stant', bagis: 'Bağış', kermes: 'Kermes', bilinclenme: 'Bilinçlendirme', sosyal_medya: 'Sosyal Medya', farkindalik: 'Farkındalık', diger: 'Diğer' }
-      return labels[type] || type
+    const pieOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }
     }
 
-    const getStatusLabel = (status) => {
-      const labels = { pending: 'Bekliyor', approved: 'Onaylandı', rejected: 'Reddedildi', revision_requested: 'Düzenleme' }
-      return labels[status] || status
-    }
-
+    const getTypeLabel = (type) => typeLabels[type] || type
+    const getStatusLabel = (status) => ({ pending: 'Bekliyor', approved: 'Onaylandı', rejected: 'Reddedildi', revision_requested: 'Düzenleme' })[status] || status
     const formatDate = (date) => new Date(date).toLocaleDateString('tr-TR')
 
     onMounted(async () => {
       try {
-        const [hoursRes, activitiesRes] = await Promise.all([
+        const [hoursRes, activitiesRes, certRes, streakRes, rankRes] = await Promise.all([
           api.get('/reports/my-hours'),
-          api.get('/activities', { params: { limit: 5 } })
+          api.get('/activities', { params: { limit: 5 } }),
+          api.get('/certificates'),
+          api.get('/reports/streak').catch(() => ({ data: { currentStreak: 0 } })),
+          api.get('/reports/school-ranking').catch(() => ({ data: { rank: null, total: 0 } }))
         ])
         hours.value = hoursRes.data
         recentActivities.value = activitiesRes.data.activities || []
-
-        // Rozet bilgisi
-        const certRes = await api.get('/certificates')
         nextBadge.value = certRes.data.nextBadge
+        streak.value = streakRes.data
+        ranking.value = rankRes.data
       } catch (err) {
         console.error('Dashboard veri yükleme hatası:', err)
       }
     })
 
-    return { authStore, hours, recentActivities, nextBadge, badgeEmoji, badgeLabel, targetPercent, currentMonthHours, currentYearHours, monthlyChartData, chartOptions, getTypeLabel, getStatusLabel, formatDate }
+    return { authStore, hours, recentActivities, nextBadge, streak, ranking, badgeEmoji, badgeLabel, targetPercent, currentMonthHours, currentYearHours, monthlyChartData, typeChartData, chartOptions, pieOptions, getTypeLabel, getStatusLabel, formatDate }
   }
 }
 </script>
@@ -187,6 +234,35 @@ export default {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+}
+
+.info-strip {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.info-chip {
+  padding: 10px 18px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.streak-chip {
+  background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+  color: #e65100;
+  border: 2px solid rgba(255, 152, 0, 0.3);
+}
+
+.rank-chip {
+  background: linear-gradient(135deg, #e0f2f1, #b2dfdb);
+  color: #00695c;
+  border: 2px solid rgba(77, 182, 172, 0.3);
 }
 
 .target-card .target-info {
@@ -205,6 +281,15 @@ export default {
 
 .chart-container {
   height: 250px;
+}
+
+.empty-chart {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--text-secondary);
+  font-size: 14px;
 }
 
 .empty-state {
@@ -240,5 +325,6 @@ export default {
 
 @media (max-width: 768px) {
   .grid-2 { grid-template-columns: 1fr; }
+  .info-strip { flex-direction: column; }
 }
 </style>

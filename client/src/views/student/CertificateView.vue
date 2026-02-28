@@ -210,7 +210,7 @@ export default {
 
 .badge-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(179, 136, 255, 0.2);
+  box-shadow: 0 8px 24px rgba(77, 182, 172, 0.2);
 }
 
 .badge-card.earned {
@@ -221,7 +221,7 @@ export default {
 }
 .badge-card.active {
   border-color: var(--primary);
-  box-shadow: 0 0 0 4px rgba(212, 165, 255, 0.3);
+  box-shadow: 0 0 0 4px rgba(77, 182, 172, 0.3);
   background: linear-gradient(135deg, rgba(237, 233, 254, 0.6), rgba(252, 231, 243, 0.4));
 }
 

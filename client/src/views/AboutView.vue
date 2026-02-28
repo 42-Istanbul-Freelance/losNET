@@ -54,14 +54,14 @@ export default {
   font-size: 56px;
   display: block;
   margin-bottom: 16px;
-  filter: drop-shadow(0 6px 12px rgba(179, 136, 255, 0.4));
+  filter: drop-shadow(0 6px 12px rgba(77, 182, 172, 0.4));
 }
 
 .about-card h1 {
   font-family: 'Fredoka', sans-serif;
   font-size: 28px;
   font-weight: 700;
-  background: linear-gradient(135deg, #b388ff, #ff8b94, #80cbc4);
+  background: linear-gradient(135deg, #00897b, #ff9800, #4db6ac);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

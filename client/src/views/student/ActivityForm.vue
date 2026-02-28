@@ -1,12 +1,16 @@
 <template>
   <div class="activity-form-page">
     <div class="page-header">
-      <h1 class="page-title">Yeni Faaliyet Ekle</h1>
-      <p class="page-subtitle">Gerçekleştirdiğiniz gönüllülük faaliyetini kayıt altına alın.</p>
+      <h1 class="page-title">{{ isEdit ? 'Faaliyeti Düzenle' : 'Yeni Faaliyet Ekle' }}</h1>
+      <p class="page-subtitle">{{ isEdit ? 'Düzenleme istenen veya reddedilen faaliyetinizi güncelleyin.' : 'Gerçekleştirdiğiniz gönüllülük faaliyetini kayıt altına alın.' }}</p>
     </div>
 
     <div v-if="success" class="alert alert-success">
-      ✅ Faaliyet başarıyla eklendi! Öğretmen onayı bekleniyor.
+      ✅ {{ isEdit ? 'Faaliyet güncellendi ve tekrar onaya gönderildi!' : 'Faaliyet başarıyla eklendi! Öğretmen onayı bekleniyor.' }}
+    </div>
+
+    <div v-if="reviewNote" class="alert alert-warning" style="background: linear-gradient(135deg, #fff3e0, #ffe0b2); color: #e65100; border-color: #ffb74d;">
+      📝 Öğretmen notu: {{ reviewNote }}
     </div>
 
     <div class="card">
@@ -38,8 +42,19 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">Kısa Açıklama</label>
-          <textarea v-model="form.description" class="form-textarea" placeholder="Faaliyetin kısa bir açıklamasını yazın..." rows="3"></textarea>
+          <label class="form-label">Kısa Açıklama *</label>
+          <textarea v-model="form.description" class="form-textarea" placeholder="Neler yaptınız? Detaylıca anlatın..." rows="3" required></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Mekan / Kurum</label>
+            <input v-model="form.location" type="text" class="form-input" placeholder="Örn: Kent Meydanı, AVM, Online" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ulaşılan Kişi Sayısı</label>
+            <input v-model.number="form.participantCount" type="number" class="form-input" min="1" placeholder="Yaklaşık (Opsiyonel)" />
+          </div>
         </div>
 
         <div class="form-group">
@@ -61,7 +76,7 @@
         <div class="form-actions">
           <router-link to="/student/activities" class="btn btn-outline">İptal</router-link>
           <button type="submit" class="btn btn-primary" :disabled="submitting">
-            {{ submitting ? 'Gönderiliyor...' : 'Faaliyeti Kaydet' }}
+            {{ submitting ? 'Gönderiliyor...' : (isEdit ? 'Güncelle & Tekrar Gönder' : 'Faaliyeti Kaydet') }}
           </button>
         </div>
       </form>
@@ -70,24 +85,61 @@
 </template>
 
 <script>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import api from '../../services/api'
 
 export default {
   name: 'ActivityForm',
   setup() {
+    const route = useRoute()
+    const router = useRouter()
     const submitting = ref(false)
     const success = ref(false)
     const uploadedPhotos = ref([])
     const uploadedDocs = ref([])
+    const reviewNote = ref('')
+
+    const activityId = computed(() => route.params.id)
+    const isEdit = computed(() => !!activityId.value)
 
     const form = reactive({
       date: new Date().toISOString().split('T')[0],
       type: '',
       hours: 1,
       description: '',
+      location: '',
+      participantCount: null,
       photos: [],
       documents: []
+    })
+
+    // Düzenleme modunda mevcut veriyi yükle
+    onMounted(async () => {
+      if (isEdit.value) {
+        try {
+          const res = await api.get(`/activities/${activityId.value}`)
+          const activity = res.data
+          form.date = new Date(activity.date).toISOString().split('T')[0]
+          form.type = activity.type
+          form.hours = activity.hours
+          form.description = activity.description || ''
+          form.location = activity.location || ''
+          form.participantCount = activity.participantCount || null
+          form.photos = activity.photos || []
+          form.documents = activity.documents || []
+          reviewNote.value = activity.reviewNote || ''
+
+          if (activity.photos?.length) {
+            uploadedPhotos.value = activity.photos.map((url, i) => ({ name: `Fotoğraf ${i + 1}`, url }))
+          }
+          if (activity.documents?.length) {
+            uploadedDocs.value = activity.documents.map((url, i) => ({ name: `Belge ${i + 1}`, url }))
+          }
+        } catch (err) {
+          console.error('Faaliyet yükleme hatası:', err)
+        }
+      }
     })
 
     const uploadFile = async (file) => {
@@ -128,25 +180,35 @@ export default {
     const handleSubmit = async () => {
       submitting.value = true
       try {
-        await api.post('/activities', form)
+        if (isEdit.value) {
+          await api.put(`/activities/${activityId.value}`, form)
+        } else {
+          await api.post('/activities', form)
+        }
         success.value = true
-        // Formu sıfırla
-        form.date = new Date().toISOString().split('T')[0]
-        form.type = ''
-        form.hours = 1
-        form.description = ''
-        form.photos = []
-        form.documents = []
-        uploadedPhotos.value = []
-        uploadedDocs.value = []
+
+        if (!isEdit.value) {
+          // Yeni faaliyet için formu sıfırla
+          form.date = new Date().toISOString().split('T')[0]
+          form.type = ''
+          form.hours = 1
+          form.description = ''
+          form.photos = []
+          form.documents = []
+          uploadedPhotos.value = []
+          uploadedDocs.value = []
+        }
+
+        // 2 sn sonra listeye yönlendir
+        setTimeout(() => { router.push('/student/activities') }, 2000)
       } catch (err) {
-        console.error('Faaliyet ekleme hatası:', err)
+        console.error('Faaliyet kaydetme hatası:', err)
       } finally {
         submitting.value = false
       }
     }
 
-    return { form, submitting, success, uploadedPhotos, uploadedDocs, handlePhotoUpload, handleDocUpload, handleSubmit }
+    return { form, submitting, success, uploadedPhotos, uploadedDocs, reviewNote, isEdit, handlePhotoUpload, handleDocUpload, handleSubmit }
   }
 }
 </script>
@@ -178,5 +240,14 @@ export default {
   border-radius: 20px;
   font-size: 12px;
   color: var(--primary);
+}
+
+.alert-warning {
+  padding: 16px 20px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 18px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 3px solid;
 }
 </style>

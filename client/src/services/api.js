@@ -2,7 +2,7 @@ import axios from 'axios'
 import { auth } from './firebase'
 
 const api = axios.create({
-    baseURL: process.env.VUE_APP_API_URL || 'http://localhost:5000/api',
+    baseURL: process.env.VUE_APP_API_URL || `http://${window.location.hostname}:5000/api`,
     headers: {
         'Content-Type': 'application/json'
     }

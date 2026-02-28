@@ -9,57 +9,69 @@
 
     <div class="card">
       <form @submit.prevent="handleSave">
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Ad Soyad</label>
-            <input v-model="form.name" type="text" class="form-input" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">E-posta</label>
-            <input :value="authStore.user?.email" type="email" class="form-input" disabled />
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Telefon</label>
-            <input v-model="form.phone" type="tel" class="form-input" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">Sınıf</label>
-            <input v-model="form.grade" type="text" class="form-input" />
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">İl</label>
-            <input v-model="form.city" type="text" class="form-input" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">İlçe</label>
-            <input v-model="form.district" type="text" class="form-input" />
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Koordinatör Öğretmen</label>
-          <input v-model="form.coordinatorTeacher" type="text" class="form-input" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">T.C. Kimlik No (Opsiyonel, KVKK uyumlu)</label>
-          <input v-model="form.tcKimlik" type="text" class="form-input" maxlength="11" placeholder="11 haneli" pattern="[0-9]*" inputmode="numeric" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">Profil Fotoğrafı</label>
-          <div class="photo-upload">
-            <div v-if="form.profilePhoto" class="photo-preview">
-              <img :src="form.profilePhoto" alt="Profil" />
-              <button type="button" class="btn btn-outline btn-sm" @click="removePhoto">Kaldır</button>
+        <div class="profile-layout">
+          <!-- Sol Sütun: Profil Fotoğrafı -->
+          <div class="profile-sidebar">
+            <div class="photo-upload">
+              <div v-if="form.profilePhoto" class="photo-preview-large">
+                <img :src="form.profilePhoto" alt="Profil" />
+                <button type="button" class="btn btn-outline btn-sm" @click="removePhoto">Kaldır</button>
+              </div>
+              <div v-else class="photo-placeholder-large">
+                <div class="placeholder-circle">👤</div>
+                <input ref="photoInput" type="file" accept="image/*" @change="handlePhotoSelect" style="display:none" />
+                <button type="button" class="btn btn-outline btn-sm" @click="triggerPhotoInput">📷 Yükle</button>
+              </div>
             </div>
-            <div v-else class="photo-placeholder">
-              <input ref="photoInput" type="file" accept="image/*" @change="handlePhotoSelect" style="display:none" />
-              <button type="button" class="btn btn-outline" @click="triggerPhotoInput">📷 Fotoğraf Yükle</button>
+            <div class="user-info-brief">
+              <h3>{{ form.name || 'Öğrenci' }}</h3>
+              <span class="badge badge-student">Öğrenci</span>
             </div>
           </div>
+
+          <!-- Sağ Sütun: Form Alanları -->
+          <div class="profile-form-content">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Ad Soyad</label>
+                <input v-model="form.name" type="text" class="form-input" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">E-posta</label>
+                <input :value="authStore.user?.email" type="email" class="form-input" disabled />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Telefon</label>
+                <input v-model="form.phone" type="tel" class="form-input" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Sınıf</label>
+                <input v-model="form.grade" type="text" class="form-input" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">İl</label>
+                <input v-model="form.city" type="text" class="form-input" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">İlçe</label>
+                <input v-model="form.district" type="text" class="form-input" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Koordinatör Öğretmen</label>
+              <input v-model="form.coordinatorTeacher" type="text" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">T.C. Kimlik No (Opsiyonel, KVKK uyumlu)</label>
+              <input v-model="form.tcKimlik" type="text" class="form-input" maxlength="11" placeholder="11 haneli" pattern="[0-9]*" inputmode="numeric" />
+            </div>
+          </div>
         </div>
+
         <div class="form-actions">
           <button type="submit" class="btn btn-primary" :disabled="saving">
             {{ saving ? 'Kaydediliyor...' : 'Kaydet' }}
@@ -169,8 +181,14 @@ export default {
 .consent-url-box p { font-size: 13px; margin-bottom: 8px; }
 .url-input { width: 100%; padding: 8px; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; }
 .btn-sm { padding: 6px 12px; font-size: 12px; }
-.photo-upload { margin-top: 8px; }
-.photo-preview { display: flex; align-items: center; gap: 12px; }
-.photo-preview img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border); }
-.photo-placeholder { margin-top: 4px; }
+.profile-layout { display: grid; grid-template-columns: 250px 1fr; gap: 32px; align-items: start; }
+@media (max-width: 768px) { .profile-layout { grid-template-columns: 1fr; } }
+.profile-sidebar { display: flex; flex-direction: column; align-items: center; padding: 24px; background: #f9fafb; border-radius: 16px; border: 1px solid var(--border); }
+.photo-upload { display: flex; flex-direction: column; align-items: center; width: 100%; }
+.photo-preview-large, .photo-placeholder-large { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.photo-preview-large img { width: 140px; height: 140px; border-radius: 50%; object-fit: cover; border: 4px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.placeholder-circle { width: 140px; height: 140px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 50px; color: #94a3b8; border: 4px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.user-info-brief { text-align: center; margin-top: 16px; width: 100%; border-top: 1px solid #e2e8f0; padding-top: 16px; }
+.user-info-brief h3 { margin: 0 0 8px 0; font-size: 18px; color: var(--text-dark); }
+.profile-form-content { display: flex; flex-direction: column; gap: 16px; }
 </style>

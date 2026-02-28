@@ -15,6 +15,9 @@ router.get('/pending', authenticate, requireRole('teacher', 'admin'), activityCo
 // GET /api/activities/:id - Faaliyet detayı
 router.get('/:id', authenticate, activityController.getActivityById);
 
+// PUT /api/activities/:id - Faaliyet güncelle (öğrenci - düzenleme istenen/reddedilenler)
+router.put('/:id', authenticate, requireRole('student'), activityController.updateActivity);
+
 // PUT /api/activities/:id/review - Onay/red/düzenleme (öğretmen/admin)
 router.put('/:id/review', authenticate, requireRole('teacher', 'admin'), activityController.reviewActivity);
 

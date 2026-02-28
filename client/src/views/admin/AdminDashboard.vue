@@ -5,6 +5,13 @@
       <p class="page-subtitle">Türkiye geneli gönüllülük takip istatistikleri</p>
     </div>
 
+    <!-- Aksiyon butonları -->
+    <div class="action-bar">
+      <button class="btn btn-outline" @click="exportCsv" :disabled="exporting">
+        {{ exporting ? 'İndiriliyor...' : '📥 Öğrenci Raporu (CSV)' }}
+      </button>
+    </div>
+
     <!-- Özet kartlar -->
     <div class="stats-grid">
       <div class="stat-card"><div class="stat-value">{{ overview.totalStudents || 0 }}</div><div class="stat-label">Toplam Öğrenci</div></div>
@@ -13,6 +20,17 @@
       <div class="stat-card"><div class="stat-value">{{ overview.totalActivities || 0 }}</div><div class="stat-label">Toplam Faaliyet</div></div>
       <div class="stat-card"><div class="stat-value">{{ overview.pendingActivities || 0 }}</div><div class="stat-label">Onay Bekleyen</div></div>
       <div class="stat-card"><div class="stat-value">{{ overview.totalTeachers || 0 }}</div><div class="stat-label">Öğretmen</div></div>
+    </div>
+
+    <!-- Yıllık Etki Özeti -->
+    <div v-if="overview.totalStudents" class="card impact-card">
+      <div class="card-title">📢 Yıllık Etki Özeti</div>
+      <div class="impact-sentences">
+        <p>🌍 Türkiye genelinde <strong>{{ overview.totalStudents }}</strong> İnci öğrencisi toplam <strong>{{ overview.totalHours }}</strong> saat gönüllülük yaptı.</p>
+        <p>🏫 <strong>{{ overview.totalSchools }}</strong> okuldan <strong>{{ overview.totalActivities }}</strong> faaliyet gerçekleştirildi.</p>
+        <p v-if="topActivityType">📊 En çok yapılan faaliyet türü: <strong>{{ topActivityType }}</strong></p>
+        <p v-if="overview.cityDistribution && overview.cityDistribution.length">🗺️ <strong>{{ overview.cityDistribution.length }}</strong> farklı ilde faaliyet yürütülüyor.</p>
+      </div>
     </div>
 
     <div class="grid-2">
@@ -98,7 +116,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { Line, Doughnut } from 'vue-chartjs'
 import CityMap from '../../components/CityMap.vue'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js'
@@ -115,14 +133,38 @@ export default {
     const topSchools = ref([])
     const monthlyChart = ref(null)
     const typeChart = ref(null)
+    const exporting = ref(false)
+    const typesData = ref([])
 
-    const lineOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(179,136,255,0.15)' } }, x: { grid: { display: false } } } }
+    const lineOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(77,182,172,0.15)' } }, x: { grid: { display: false } } } }
     const pieOptions = { responsive: true, maintainAspectRatio: false }
     const getBadgeEmoji = (l) => ({ none:'⭐', bronze:'🥉', silver:'🥈', gold:'🥇', platinum:'💎' })[l] || '⭐'
     const getSchoolBadgeLabel = (b) => ({ none:'—', inci_dostu:'🏫 İnci Dostu', etki_lideri:'🌟 Etki Lideri', yilin_okulu:'🏆 Yılın Okulu' })[b] || '—'
 
     const typeLabels = { seminer:'Seminer', stant:'Stant', bagis:'Bağış', kermes:'Kermes', bilinclenme:'Bilinçlendirme', sosyal_medya:'Sosyal Medya', farkindalik:'Farkındalık', diger:'Diğer' }
-    const colors = ['#b388ff','#ff8b94','#80cbc4','#ffb74d','#64b5f6','#ce93d8','#ffaaa5','#a8e6cf']
+    const colors = ['#4db6ac','#ff9800','#80cbc4','#ffb74d','#64b5f6','#81d4fa','#ffcc80','#a8e6cf']
+
+    const topActivityType = computed(() => {
+      if (typesData.value.length === 0) return null
+      const sorted = [...typesData.value].sort((a, b) => b.totalHours - a.totalHours)
+      return typeLabels[sorted[0]._id] || sorted[0]._id
+    })
+
+    const exportCsv = async () => {
+      exporting.value = true
+      try {
+        const res = await api.get('/reports/export/students', { responseType: 'blob' })
+        const url = window.URL.createObjectURL(new Blob([res.data]))
+        const link = document.createElement('a')
+        link.href = url
+        link.setAttribute('download', 'ogrenci_raporu.csv')
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        window.URL.revokeObjectURL(url)
+      } catch (err) { console.error('CSV export hatası:', err) }
+      finally { exporting.value = false }
+    }
 
     onMounted(async () => {
       try {
@@ -137,6 +179,7 @@ export default {
         overview.value = overviewRes.data
         topStudents.value = studentsRes.data
         topSchools.value = schoolsRes.data
+        typesData.value = typesRes.data || []
 
         const monthly = monthlyRes.data || []
         if (monthly.length) {
@@ -146,12 +189,12 @@ export default {
             datasets: [{
               label: 'Saat',
               data: monthly.map(m => m.totalHours),
-              borderColor: '#b388ff',
-              backgroundColor: 'rgba(179,136,255,0.2)',
+              borderColor: '#4db6ac',
+              backgroundColor: 'rgba(77,182,172,0.2)',
               fill: true,
               tension: 0.4,
               pointRadius: 5,
-              pointBackgroundColor: '#ff8b94'
+              pointBackgroundColor: '#ff9800'
             }]
           }
         }
@@ -166,7 +209,7 @@ export default {
       } catch (err) { console.error(err) }
     })
 
-    return { overview, topStudents, topSchools, monthlyChart, typeChart, lineOptions, pieOptions, getBadgeEmoji, getSchoolBadgeLabel }
+    return { overview, topStudents, topSchools, monthlyChart, typeChart, lineOptions, pieOptions, getBadgeEmoji, getSchoolBadgeLabel, exportCsv, exporting, topActivityType }
   }
 }
 </script>
@@ -174,5 +217,9 @@ export default {
 <style scoped>
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .chart-container { height: 280px; }
+.action-bar { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.impact-card { margin-bottom: 16px; }
+.impact-sentences p { margin-bottom: 8px; font-size: 15px; line-height: 1.6; }
+.impact-sentences strong { color: var(--primary-dark, #00897b); }
 @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
 </style>

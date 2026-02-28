@@ -90,14 +90,14 @@ export default {
 }
 
 .consent-card {
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--bg-card);
   backdrop-filter: blur(24px);
   border-radius: 32px;
   padding: 40px;
   width: 100%;
   max-width: 480px;
-  box-shadow: 0 25px 60px rgba(179, 136, 255, 0.2), 0 0 0 3px rgba(255,255,255,0.8);
-  border: 3px solid rgba(212, 165, 255, 0.3);
+  box-shadow: 0 25px 60px rgba(77, 182, 172, 0.2), 0 0 0 3px rgba(255,255,255,0.8);
+  border: 3px solid rgba(77, 182, 172, 0.3);
 }
 
 .consent-header {
@@ -105,8 +105,8 @@ export default {
   margin-bottom: 28px;
 }
 
-.consent-icon { font-size: 52px; display: block; margin-bottom: 12px; filter: drop-shadow(0 6px 12px rgba(179, 136, 255, 0.4)); }
-.consent-header h1 { font-family: 'Fredoka', sans-serif; font-size: 26px; font-weight: 700; background: linear-gradient(135deg, #b388ff, #ff8b94); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.consent-icon { font-size: 52px; display: block; margin-bottom: 12px; filter: drop-shadow(0 6px 12px rgba(77, 182, 172, 0.4)); }
+.consent-header h1 { font-family: 'Fredoka', sans-serif; font-size: 26px; font-weight: 700; background: linear-gradient(135deg, #4db6ac, #ff9800); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 .consent-header p { color: #7d6b9a; font-size: 15px; margin-top: 6px; }
 
 .loading-state, .error-state {
@@ -126,11 +126,11 @@ export default {
 
 .consent-desc { margin-bottom: 20px; font-size: 15px; color: #5e4a7a; }
 .student-info {
-  background: linear-gradient(135deg, rgba(212,165,255,0.1), rgba(255,170,165,0.08));
-  border-radius: 16px;
-  padding: 18px;
-  margin-bottom: 16px;
-  border: 2px solid rgba(212,165,255,0.2);
+  background: linear-gradient(135deg, rgba(77, 182, 172, 0.1), rgba(255, 152, 0, 0.08));
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  font-size: 14px;
+  border: 2px solid rgba(77, 182, 172, 0.2);
 }
 .student-info p { margin: 8px 0; font-size: 14px; }
 .kvkk-note { font-size: 12px; color: #7d6b9a; margin-bottom: 20px; }

@@ -3,11 +3,12 @@ const User = require('../models/User');
 const School = require('../models/School');
 const Certificate = require('../models/Certificate');
 const { updateSchoolBadgeAfterActivity } = require('../services/schoolBadgeService');
+const { createNotification } = require('./notificationController');
 
 // Yeni faaliyet oluştur (öğrenci)
 exports.createActivity = async (req, res) => {
     try {
-        const { date, type, hours, description, photos, documents } = req.body;
+        const { date, type, hours, description, location, participantCount, photos, documents } = req.body;
 
         const activity = await Activity.create({
             student: req.user._id,
@@ -16,6 +17,8 @@ exports.createActivity = async (req, res) => {
             type,
             hours,
             description,
+            location,
+            participantCount,
             photos: photos || [],
             documents: documents || []
         });
@@ -26,10 +29,55 @@ exports.createActivity = async (req, res) => {
     }
 };
 
+// Faaliyet güncelle (öğrenci - revision_requested veya rejected durumundakiler)
+exports.updateActivity = async (req, res) => {
+    try {
+        const activity = await Activity.findById(req.params.id);
+        if (!activity) {
+            return res.status(404).json({ message: 'Faaliyet bulunamadı' });
+        }
+
+        // Sadece kendi faaliyetini düzenleyebilir
+        if (activity.student.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Bu faaliyeti düzenleme yetkiniz yok' });
+        }
+
+        // Sadece revision_requested veya rejected durumundaki faaliyetler düzenlenebilir
+        if (!['revision_requested', 'rejected'].includes(activity.status)) {
+            return res.status(400).json({ message: 'Bu faaliyet düzenlenemez, sadece düzenleme istenen veya reddedilen faaliyetler güncellenebilir' });
+        }
+
+        const { date, type, hours, description, location, participantCount, photos, documents } = req.body;
+
+        activity.date = date || activity.date;
+        activity.type = type || activity.type;
+        activity.hours = hours || activity.hours;
+        activity.description = description !== undefined ? description : activity.description;
+        activity.location = location !== undefined ? location : activity.location;
+        activity.participantCount = participantCount !== undefined ? participantCount : activity.participantCount;
+        activity.photos = photos || activity.photos;
+        activity.documents = documents || activity.documents;
+        activity.status = 'pending'; // Tekrar onaya gönder
+        activity.reviewNote = '';
+        activity.reviewedBy = null;
+        activity.reviewedAt = null;
+
+        await activity.save();
+
+        const updated = await Activity.findById(activity._id)
+            .populate('student', 'name email grade')
+            .populate('school', 'name city');
+
+        res.json(updated);
+    } catch (error) {
+        res.status(500).json({ message: 'Faaliyet güncellenirken hata oluştu', error: error.message });
+    }
+};
+
 // Kullanıcının faaliyetlerini listele
 exports.getActivities = async (req, res) => {
     try {
-        const { status, page = 1, limit = 20 } = req.query;
+        const { status, type, startDate, endDate, search, page = 1, limit = 20 } = req.query;
         const query = {};
 
         // Öğrenci kendi faaliyetlerini görür
@@ -46,13 +94,31 @@ exports.getActivities = async (req, res) => {
             query.status = status;
         }
 
-        const activities = await Activity.find(query)
+        if (type) {
+            query.type = type;
+        }
+
+        if (startDate || endDate) {
+            query.date = {};
+            if (startDate) query.date.$gte = new Date(startDate);
+            if (endDate) query.date.$lte = new Date(endDate);
+        }
+
+        let activities = await Activity.find(query)
             .populate('student', 'name email grade')
             .populate('school', 'name city')
             .populate('reviewedBy', 'name')
             .sort({ createdAt: -1 })
             .skip((page - 1) * limit)
             .limit(parseInt(limit));
+
+        // Öğrenci adına göre arama (populate sonrası filter)
+        if (search && req.user.role !== 'student') {
+            const searchLower = search.toLowerCase();
+            activities = activities.filter(a =>
+                a.student?.name?.toLowerCase().includes(searchLower)
+            );
+        }
 
         const total = await Activity.countDocuments(query);
 
@@ -108,6 +174,40 @@ exports.reviewActivity = async (req, res) => {
         activity.reviewedAt = new Date();
         await activity.save();
 
+        // Bildirim oluştur
+        const typeLabels = {
+            seminer: 'Seminer', stant: 'Stant', bagis: 'Bağış', kermes: 'Kermes',
+            bilinclenme: 'Bilinçlendirme', sosyal_medya: 'Sosyal Medya',
+            farkindalik: 'Farkındalık', diger: 'Diğer'
+        };
+        const activityLabel = typeLabels[activity.type] || activity.type;
+
+        if (status === 'approved') {
+            await createNotification({
+                user: activity.student,
+                type: 'activity_approved',
+                title: 'Faaliyet Onaylandı ✅',
+                message: `${activityLabel} faaliyetiniz (${activity.hours} saat) onaylandı.`,
+                relatedActivity: activity._id
+            });
+        } else if (status === 'rejected') {
+            await createNotification({
+                user: activity.student,
+                type: 'activity_rejected',
+                title: 'Faaliyet Reddedildi ❌',
+                message: `${activityLabel} faaliyetiniz reddedildi.${reviewNote ? ' Not: ' + reviewNote : ''}`,
+                relatedActivity: activity._id
+            });
+        } else if (status === 'revision_requested') {
+            await createNotification({
+                user: activity.student,
+                type: 'activity_revision',
+                title: 'Düzenleme İstendi ✏️',
+                message: `${activityLabel} faaliyetiniz için düzenleme istendi.${reviewNote ? ' Not: ' + reviewNote : ''}`,
+                relatedActivity: activity._id
+            });
+        }
+
         // Eğer onaylandıysa, öğrencinin toplam saatini güncelle
         if (status === 'approved') {
             const student = await User.findById(activity.student);
@@ -126,8 +226,9 @@ exports.reviewActivity = async (req, res) => {
                 student.badgeLevel = newBadge;
                 await student.save();
 
-                // Yeni rozet kazanıldıysa sertifika oluştur
+                // Yeni rozet kazanıldıysa sertifika oluştur ve bildirim gönder
                 if (newBadge !== oldBadge && newBadge !== 'none') {
+                    const badgeLabels = { bronze: 'Bronz İnci 🥉', silver: 'Gümüş İnci 🥈', gold: 'Altın İnci 🥇', platinum: 'Platin İnci Lideri 💎' };
                     try {
                         await Certificate.create({
                             student: student._id,
@@ -140,6 +241,14 @@ exports.reviewActivity = async (req, res) => {
                             console.error('Sertifika oluşturma hatası:', certError);
                         }
                     }
+
+                    await createNotification({
+                        user: student._id,
+                        type: 'badge_earned',
+                        title: 'Yeni Rozet Kazandınız! 🏅',
+                        message: `Tebrikler! ${badgeLabels[newBadge]} rozetini kazandınız! (${student.totalHours} saat)`,
+                        relatedActivity: activity._id
+                    });
                 }
 
                 // Okul toplam saatini güncelle ve rozet hesapla

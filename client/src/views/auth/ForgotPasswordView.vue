@@ -1,6 +1,9 @@
 <template>
   <div class="auth-container">
     <div class="auth-card">
+      <router-link to="/" class="btn-home-inside" title="Ana Sayfaya Dön">
+        <span>⬅</span> Ana Sayfa
+      </router-link>
       <div class="auth-header">
         <span class="auth-icon">💙</span>
         <h1>Şifremi Unuttum</h1>
@@ -93,17 +96,42 @@ export default {
 }
 
 .auth-card {
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--bg-card);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border-radius: 32px;
-  padding: 48px;
+  padding: 64px 48px 48px;
   width: 100%;
   max-width: 440px;
-  box-shadow: 0 25px 60px rgba(179, 136, 255, 0.2), 0 0 0 3px rgba(255,255,255,0.8);
+  box-shadow: 0 25px 60px rgba(77, 182, 172, 0.2), 0 0 0 3px rgba(255,255,255,0.8);
   position: relative;
   z-index: 1;
-  border: 3px solid rgba(212, 165, 255, 0.3);
+  border: 3px solid rgba(77, 182, 172, 0.3);
+}
+
+/* İçerideki Ana Sayfa Butonu */
+.btn-home-inside {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: rgba(0, 137, 123, 0.05);
+  color: #00897b;
+  padding: 8px 14px;
+  border-radius: 20px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s ease;
+  z-index: 10;
+  border: 1px solid rgba(0, 137, 123, 0.1);
+}
+
+.btn-home-inside:hover {
+  background: rgba(0, 137, 123, 0.1);
+  transform: translateY(-2px);
 }
 
 .auth-header {
@@ -115,14 +143,14 @@ export default {
   font-size: 56px;
   display: block;
   margin-bottom: 16px;
-  filter: drop-shadow(0 6px 12px rgba(179, 136, 255, 0.4));
+  filter: drop-shadow(0 6px 12px rgba(77, 182, 172, 0.4));
 }
 
 .auth-header h1 {
   font-family: 'Fredoka', sans-serif;
   font-size: 28px;
   font-weight: 700;
-  background: linear-gradient(135deg, #b388ff, #ff8b94, #80cbc4);
+  background: linear-gradient(135deg, #00897b, #ff9800, #4db6ac);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -160,13 +188,13 @@ export default {
   font-size: 17px;
   font-weight: 700;
   margin-top: 12px;
-  background: linear-gradient(135deg, #b388ff, #ff8b94) !important;
-  box-shadow: 0 8px 24px rgba(179, 136, 255, 0.4) !important;
+  background: linear-gradient(135deg, #4db6ac, #ff9800) !important;
+  box-shadow: 0 8px 24px rgba(77, 182, 172, 0.4) !important;
 }
 
 .btn-full:hover {
   transform: translateY(-3px);
-  box-shadow: 0 12px 32px rgba(179, 136, 255, 0.5) !important;
+  box-shadow: 0 12px 32px rgba(77, 182, 172, 0.5) !important;
 }
 
 .auth-footer {
@@ -178,7 +206,7 @@ export default {
 }
 
 .auth-footer a {
-  background: linear-gradient(135deg, #b388ff, #ff8b94);
+  background: linear-gradient(135deg, #4db6ac, #ff9800);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

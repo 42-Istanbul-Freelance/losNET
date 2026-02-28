@@ -11,7 +11,9 @@ const app = express();
 
 // Middleware
 app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:8080',
+    origin: function (origin, callback) {
+        callback(null, true);
+    },
     credentials: true
 }));
 app.use(express.json());
@@ -28,6 +30,7 @@ app.use('/api/upload', require('./routes/uploadRoutes'));
 app.use('/api/certificates', require('./routes/certificateRoutes'));
 app.use('/api/consent', require('./routes/consentRoutes'));
 app.use('/api/schools', require('./routes/schoolRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
 
 // Sağlık kontrolü
 app.get('/api/health', (req, res) => {

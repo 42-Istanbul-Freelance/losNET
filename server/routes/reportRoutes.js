@@ -30,4 +30,16 @@ router.get('/activity-types', authenticate, requireRole('admin'), reportControll
 // GET /api/reports/monthly - Aylık faaliyet dağılımı
 router.get('/monthly', authenticate, requireRole('admin'), reportController.getMonthlyStats);
 
+// GET /api/reports/school-ranking - Öğrencinin okul içi sıralaması
+router.get('/school-ranking', authenticate, reportController.getSchoolRanking);
+
+// GET /api/reports/streak - Öğrenci streak bilgisi
+router.get('/streak', authenticate, reportController.getStudentStreak);
+
+// GET /api/reports/export/students - Öğrenci listesi CSV export (admin)
+router.get('/export/students', authenticate, requireRole('admin'), reportController.exportStudentsCsv);
+
+// GET /api/reports/calendar - Faaliyet takvimi verisi
+router.get('/calendar', authenticate, reportController.getActivityCalendar);
+
 module.exports = router;

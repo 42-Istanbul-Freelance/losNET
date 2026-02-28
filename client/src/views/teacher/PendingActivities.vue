@@ -7,14 +7,35 @@
 
     <div v-if="success" class="alert alert-success">{{ success }}</div>
 
+    <!-- Filtreler -->
+    <div class="filters">
+      <div class="filter-group">
+        <input v-model="searchQuery" type="text" class="form-input filter-input" placeholder="🔍 Öğrenci adı..." @input="filterActivities" />
+        <select v-model="typeFilter" class="form-select filter-select" @change="filterActivities">
+          <option value="">Tüm Türler</option>
+          <option value="seminer">Seminer</option>
+          <option value="stant">Stant</option>
+          <option value="bagis">Bağış</option>
+          <option value="kermes">Kermes</option>
+          <option value="bilinclenme">Bilinçlendirme</option>
+          <option value="sosyal_medya">Sosyal Medya</option>
+          <option value="farkindalik">Farkındalık</option>
+          <option value="diger">Diğer</option>
+        </select>
+      </div>
+      <span v-if="filteredActivities.length !== allActivities.length" class="filter-info">
+        {{ filteredActivities.length }}/{{ allActivities.length }} faaliyet gösteriliyor
+      </span>
+    </div>
+
     <div v-if="loading" class="loading">Yükleniyor...</div>
-    <div v-else-if="activities.length === 0" class="card">
+    <div v-else-if="filteredActivities.length === 0" class="card">
       <div class="empty-state">
-        <p>🎉 Onay bekleyen faaliyet bulunmuyor.</p>
+        <p>🎉 {{ allActivities.length === 0 ? 'Onay bekleyen faaliyet bulunmuyor.' : 'Filtreye uygun faaliyet yok.' }}</p>
       </div>
     </div>
     <div v-else>
-      <div v-for="a in activities" :key="a._id" class="card activity-review-card">
+      <div v-for="a in filteredActivities" :key="a._id" class="card activity-review-card">
         <div class="review-header">
           <div>
             <strong>{{ a.student?.name || 'Öğrenci' }}</strong>
@@ -42,6 +63,12 @@
               <a v-for="(p, i) in a.photos" :key="i" :href="p" target="_blank" class="photo-thumb">📷</a>
             </div>
           </div>
+          <div v-if="a.documents && a.documents.length" class="info-row">
+            <span class="info-label">Belgeler:</span>
+            <div class="photo-grid">
+              <a v-for="(d, i) in a.documents" :key="i" :href="d" target="_blank" class="photo-thumb">📄</a>
+            </div>
+          </div>
         </div>
 
         <div class="review-actions">
@@ -58,16 +85,30 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import api from '../../services/api'
 
 export default {
   name: 'PendingActivities',
   setup() {
-    const activities = ref([])
+    const allActivities = ref([])
     const loading = ref(true)
     const success = ref('')
     const reviewNotes = reactive({})
+    const searchQuery = ref('')
+    const typeFilter = ref('')
+
+    const filteredActivities = computed(() => {
+      let result = allActivities.value
+      if (searchQuery.value) {
+        const q = searchQuery.value.toLowerCase()
+        result = result.filter(a => a.student?.name?.toLowerCase().includes(q))
+      }
+      if (typeFilter.value) {
+        result = result.filter(a => a.type === typeFilter.value)
+      }
+      return result
+    })
 
     const formatDate = (d) => new Date(d).toLocaleDateString('tr-TR')
     const getTypeLabel = (t) => ({ seminer:'Seminer', stant:'Stant', bagis:'Bağış', kermes:'Kermes', bilinclenme:'Bilinçlendirme', sosyal_medya:'Sosyal Medya', farkindalik:'Farkındalık', diger:'Diğer' })[t] || t
@@ -76,7 +117,7 @@ export default {
       loading.value = true
       try {
         const res = await api.get('/activities/pending')
-        activities.value = res.data
+        allActivities.value = res.data
       } catch (err) { console.error(err) }
       finally { loading.value = false }
     }
@@ -86,18 +127,25 @@ export default {
         await api.put(`/activities/${id}/review`, { status, reviewNote: reviewNotes[id] || '' })
         const labels = { approved: 'onaylandı', rejected: 'reddedildi', revision_requested: 'için düzenleme istendi' }
         success.value = `Faaliyet ${labels[status]}.`
-        activities.value = activities.value.filter(a => a._id !== id)
+        allActivities.value = allActivities.value.filter(a => a._id !== id)
         setTimeout(() => { success.value = '' }, 3000)
       } catch (err) { console.error(err) }
     }
 
+    const filterActivities = () => { /* computed handles this */ }
+
     onMounted(loadActivities)
-    return { activities, loading, success, reviewNotes, formatDate, getTypeLabel, reviewActivity }
+    return { allActivities, filteredActivities, loading, success, reviewNotes, searchQuery, typeFilter, formatDate, getTypeLabel, reviewActivity, filterActivities }
   }
 }
 </script>
 
 <style scoped>
+.filters { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 12px; flex-wrap: wrap; }
+.filter-group { display: flex; gap: 8px; }
+.filter-input { max-width: 220px; padding: 10px 14px; }
+.filter-select { max-width: 180px; }
+.filter-info { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
 .activity-review-card { margin-bottom: 16px; }
 .review-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
 .grade-tag { margin-left: 8px; padding: 2px 8px; background: var(--primary-light); border-radius: 12px; font-size: 12px; color: var(--primary); }

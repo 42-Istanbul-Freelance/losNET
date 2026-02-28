@@ -79,7 +79,7 @@ export default {
     const getSchoolBadgeLabel = (b) => ({ none:'', inci_dostu:'🏫 İnci Dostu Okul', etki_lideri:'🌟 Sosyal Etki Lideri Okul', yilin_okulu:'🏆 Yılın En Aktif İnci Okulu' })[b] || ''
 
     const typeLabels = { seminer:'Seminer', stant:'Stant', bagis:'Bağış', kermes:'Kermes', bilinclenme:'Bilinçlendirme', sosyal_medya:'Sosyal Medya', farkindalik:'Farkındalık', diger:'Diğer' }
-    const colors = ['#b388ff','#ff8b94','#80cbc4','#ffb74d','#64b5f6','#ce93d8','#ffaaa5','#a8e6cf']
+    const colors = ['#4db6ac','#ff9800','#80cbc4','#ffb74d','#64b5f6','#81d4fa','#ffcc80','#a8e6cf']
 
     onMounted(async () => {
       try {
@@ -91,7 +91,7 @@ export default {
         if (monthly.length) {
           const sorted = [...monthly].sort((a,b) => a._id.year-b._id.year || a._id.month-b._id.month)
           const months = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara']
-          monthlyChart.value = { labels: sorted.map(m => months[m._id.month-1]), datasets: [{ label:'Saat', data: sorted.map(m=>m.hours), backgroundColor:'rgba(179,136,255,0.6)', borderColor:'#b388ff', borderWidth:2, borderRadius:12 }] }
+          monthlyChart.value = { labels: sorted.map(m => months[m._id.month-1]), datasets: [{ label:'Saat', data: sorted.map(m=>m.hours), backgroundColor:'rgba(77,182,172,0.6)', borderColor:'#4db6ac', borderWidth:2, borderRadius:12 }] }
         }
 
         const types = res.data.typeDistribution || []

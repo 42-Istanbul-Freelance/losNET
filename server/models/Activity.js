@@ -39,6 +39,14 @@ const activitySchema = new mongoose.Schema({
         type: String,
         trim: true
     },
+    location: {
+        type: String,
+        trim: true
+    },
+    participantCount: {
+        type: Number,
+        min: 1
+    },
     photos: [{
         type: String
     }],
