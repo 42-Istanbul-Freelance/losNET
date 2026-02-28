@@ -1,5 +1,11 @@
 <template>
   <div class="auth-container">
+    <div class="floating-shapes">
+      <div class="shape shape-1"></div>
+      <div class="shape shape-2"></div>
+      <div class="shape shape-3"></div>
+      <div class="shape shape-4"></div>
+    </div>
     <div class="auth-card">
       <div class="auth-header">
         <span class="auth-icon">💙</span>
@@ -137,48 +143,90 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #14b8a6 100%);
-  background-size: 200% 200%;
-  animation: gradientShift 8s ease infinite;
+  background: linear-gradient(135deg, #ffe8f0 0%, #e8f4ff 25%, #f0e6ff 50%, #e8fff0 75%, #fff4e6 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 12s ease infinite;
   padding: 24px;
   position: relative;
   overflow: hidden;
 }
 
-.auth-container::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 50%);
-  animation: pulse 15s ease-in-out infinite;
-}
-
 @keyframes gradientShift {
   0%, 100% { background-position: 0% 50%; }
+  25% { background-position: 50% 100%; }
   50% { background-position: 100% 50%; }
+  75% { background-position: 50% 0%; }
 }
 
-@keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 0.5; }
-  50% { transform: scale(1.1); opacity: 0.8; }
+.floating-shapes {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.shape {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.6;
+  animation: floatShape 18s ease-in-out infinite;
+}
+
+.shape-1 {
+  width: 100px;
+  height: 100px;
+  background: radial-gradient(circle, #d4a5ff 0%, transparent 70%);
+  top: 8%;
+  right: 10%;
+}
+
+.shape-2 {
+  width: 70px;
+  height: 70px;
+  background: radial-gradient(circle, #a8e6cf 0%, transparent 70%);
+  bottom: 20%;
+  left: 5%;
+  animation-delay: -5s;
+}
+
+.shape-3 {
+  width: 80px;
+  height: 80px;
+  background: radial-gradient(circle, #ffd3b6 0%, transparent 70%);
+  top: 40%;
+  right: 3%;
+  animation-delay: -10s;
+}
+
+.shape-4 {
+  width: 60px;
+  height: 60px;
+  background: radial-gradient(circle, #a8d8ff 0%, transparent 70%);
+  bottom: 10%;
+  right: 20%;
+  animation-delay: -7s;
+}
+
+@keyframes floatShape {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(15px, -20px) scale(1.05); }
+  66% { transform: translate(-10px, 15px) scale(0.98); }
 }
 
 .auth-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-radius: 32px;
   padding: 40px;
   width: 100%;
   max-width: 540px;
-  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255,255,255,0.3);
+  box-shadow: 0 25px 60px rgba(179, 136, 255, 0.2), 0 0 0 3px rgba(255,255,255,0.8);
   max-height: 90vh;
   overflow-y: auto;
   position: relative;
   z-index: 1;
+  border: 3px solid rgba(212, 165, 255, 0.3);
 }
 
 .auth-header {
@@ -190,22 +238,23 @@ export default {
   font-size: 52px;
   display: block;
   margin-bottom: 14px;
-  filter: drop-shadow(0 4px 8px rgba(124, 58, 237, 0.3));
+  filter: drop-shadow(0 6px 12px rgba(179, 136, 255, 0.4));
 }
 
 .auth-header h1 {
-  font-size: 26px;
-  font-weight: 800;
-  background: linear-gradient(135deg, #7c3aed, #ec4899);
+  font-family: 'Fredoka', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #b388ff, #ff8b94, #80cbc4);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .auth-header p {
-  color: #6b7280;
-  font-size: 14px;
-  margin-top: 6px;
+  color: #7d6b9a;
+  font-size: 15px;
+  margin-top: 8px;
   font-weight: 600;
 }
 
@@ -218,29 +267,30 @@ export default {
 .btn-full {
   width: 100%;
   justify-content: center;
-  padding: 14px;
-  font-size: 16px;
+  padding: 16px;
+  font-size: 17px;
   font-weight: 700;
   margin-top: 12px;
-  background: linear-gradient(135deg, #7c3aed, #ec4899) !important;
-  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4) !important;
+  background: linear-gradient(135deg, #b388ff, #ff8b94) !important;
+  box-shadow: 0 8px 24px rgba(179, 136, 255, 0.4) !important;
+  border-radius: 20px !important;
 }
 
 .btn-full:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(124, 58, 237, 0.5) !important;
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(179, 136, 255, 0.5) !important;
 }
 
 .auth-footer {
   text-align: center;
   margin-top: 24px;
-  font-size: 14px;
-  color: #6b7280;
+  font-size: 15px;
+  color: #7d6b9a;
   font-weight: 600;
 }
 
 .auth-footer a {
-  background: linear-gradient(135deg, #7c3aed, #ec4899);
+  background: linear-gradient(135deg, #b388ff, #ff8b94);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -254,7 +304,7 @@ export default {
 
 .form-hint {
   font-size: 12px;
-  color: #6b7280;
+  color: #7d6b9a;
   margin-top: 4px;
 }
 
@@ -266,8 +316,8 @@ export default {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  font-size: 13px;
-  color: #4b5563;
+  font-size: 14px;
+  color: #5e4a7a;
   cursor: pointer;
 }
 

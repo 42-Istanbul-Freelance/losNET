@@ -39,13 +39,14 @@ export default {
   font-size: 64px;
   display: block;
   margin-bottom: 16px;
-  filter: drop-shadow(0 4px 8px rgba(124, 58, 237, 0.3));
+  filter: drop-shadow(0 6px 12px rgba(179, 136, 255, 0.4));
 }
 
 .not-found-card h1 {
+  font-family: 'Fredoka', sans-serif;
   font-size: 72px;
-  font-weight: 800;
-  background: linear-gradient(135deg, #7c3aed, #ec4899);
+  font-weight: 700;
+  background: linear-gradient(135deg, #b388ff, #ff8b94, #80cbc4);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

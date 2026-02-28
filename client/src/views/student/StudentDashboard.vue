@@ -133,10 +133,10 @@ export default {
         datasets: [{
           label: 'Saat',
           data: sorted.map(m => m.hours),
-          backgroundColor: 'rgba(124, 58, 237, 0.6)',
-          borderColor: '#7c3aed',
-          borderWidth: 1,
-          borderRadius: 8
+          backgroundColor: 'rgba(179, 136, 255, 0.6)',
+          borderColor: '#b388ff',
+          borderWidth: 2,
+          borderRadius: 12
         }]
       }
     })

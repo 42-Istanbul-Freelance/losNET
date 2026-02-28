@@ -77,46 +77,33 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #14b8a6 100%);
-  background-size: 200% 200%;
-  animation: gradientShift 8s ease infinite;
+  background: linear-gradient(135deg, #ffe8f0 0%, #e8f4ff 25%, #f0e6ff 50%, #e8fff0 75%, #fff4e6 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 12s ease infinite;
   padding: 24px;
   position: relative;
   overflow: hidden;
 }
 
-.auth-container::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 50%);
-  animation: pulse 15s ease-in-out infinite;
-}
-
 @keyframes gradientShift {
   0%, 100% { background-position: 0% 50%; }
+  25% { background-position: 50% 100%; }
   50% { background-position: 100% 50%; }
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 0.5; }
-  50% { transform: scale(1.1); opacity: 0.8; }
+  75% { background-position: 50% 0%; }
 }
 
 .auth-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-radius: 32px;
   padding: 48px;
   width: 100%;
   max-width: 440px;
-  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255,255,255,0.3);
+  box-shadow: 0 25px 60px rgba(179, 136, 255, 0.2), 0 0 0 3px rgba(255,255,255,0.8);
   position: relative;
   z-index: 1;
+  border: 3px solid rgba(212, 165, 255, 0.3);
 }
 
 .auth-header {
@@ -128,20 +115,21 @@ export default {
   font-size: 56px;
   display: block;
   margin-bottom: 16px;
-  filter: drop-shadow(0 4px 8px rgba(124, 58, 237, 0.3));
+  filter: drop-shadow(0 6px 12px rgba(179, 136, 255, 0.4));
 }
 
 .auth-header h1 {
+  font-family: 'Fredoka', sans-serif;
   font-size: 28px;
-  font-weight: 800;
-  background: linear-gradient(135deg, #7c3aed, #ec4899);
+  font-weight: 700;
+  background: linear-gradient(135deg, #b388ff, #ff8b94, #80cbc4);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .auth-header p {
-  color: #6b7280;
+  color: #7d6b9a;
   font-size: 15px;
   margin-top: 8px;
   font-weight: 600;
@@ -150,48 +138,47 @@ export default {
 .success-message,
 .demo-message {
   padding: 20px;
-  border-radius: 12px;
+  border-radius: 16px;
   margin-bottom: 24px;
   font-size: 15px;
-  color: #4b5563;
 }
 
 .success-message {
-  background: #d1fae5;
-  color: #065f46;
+  background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+  color: #2e7d32;
 }
 
 .demo-message {
-  background: #fef3c7;
-  color: #92400e;
+  background: linear-gradient(135deg, #fff9c4, #ffd3b6);
+  color: #8b6914;
 }
 
 .btn-full {
   width: 100%;
   justify-content: center;
-  padding: 14px;
-  font-size: 16px;
+  padding: 16px;
+  font-size: 17px;
   font-weight: 700;
   margin-top: 12px;
-  background: linear-gradient(135deg, #7c3aed, #ec4899) !important;
-  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4) !important;
+  background: linear-gradient(135deg, #b388ff, #ff8b94) !important;
+  box-shadow: 0 8px 24px rgba(179, 136, 255, 0.4) !important;
 }
 
 .btn-full:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(124, 58, 237, 0.5) !important;
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(179, 136, 255, 0.5) !important;
 }
 
 .auth-footer {
   text-align: center;
   margin-top: 28px;
   font-size: 15px;
-  color: #6b7280;
+  color: #7d6b9a;
   font-weight: 600;
 }
 
 .auth-footer a {
-  background: linear-gradient(135deg, #7c3aed, #ec4899);
+  background: linear-gradient(135deg, #b388ff, #ff8b94);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

@@ -85,18 +85,19 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #7c3aed 0%, #ec4899 50%, #14b8a6 100%);
+  background: linear-gradient(135deg, #ffe8f0 0%, #e8f4ff 25%, #f0e6ff 50%, #e8fff0 75%, #fff4e6 100%);
   padding: 24px;
 }
 
 .consent-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(24px);
+  border-radius: 32px;
   padding: 40px;
   width: 100%;
   max-width: 480px;
-  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 25px 60px rgba(179, 136, 255, 0.2), 0 0 0 3px rgba(255,255,255,0.8);
+  border: 3px solid rgba(212, 165, 255, 0.3);
 }
 
 .consent-header {
@@ -104,33 +105,34 @@ export default {
   margin-bottom: 28px;
 }
 
-.consent-icon { font-size: 48px; display: block; margin-bottom: 12px; }
-.consent-header h1 { font-size: 24px; font-weight: 800; color: #1e1b4b; }
-.consent-header p { color: #6b7280; font-size: 14px; margin-top: 4px; }
+.consent-icon { font-size: 52px; display: block; margin-bottom: 12px; filter: drop-shadow(0 6px 12px rgba(179, 136, 255, 0.4)); }
+.consent-header h1 { font-family: 'Fredoka', sans-serif; font-size: 26px; font-weight: 700; background: linear-gradient(135deg, #b388ff, #ff8b94); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.consent-header p { color: #7d6b9a; font-size: 15px; margin-top: 6px; }
 
 .loading-state, .error-state {
   text-align: center;
   padding: 24px;
-  color: #6b7280;
+  color: #7d6b9a;
 }
 
-.error-state { color: #b91c1c; }
+.error-state { color: #b71c1c; }
 
 .success-state {
   text-align: center;
   padding: 24px;
 }
 
-.success-msg { font-size: 18px; font-weight: 700; color: #047857; margin-bottom: 12px; }
+.success-msg { font-size: 18px; font-weight: 700; color: #2e7d32; margin-bottom: 12px; }
 
-.consent-desc { margin-bottom: 20px; font-size: 15px; color: #4b5563; }
+.consent-desc { margin-bottom: 20px; font-size: 15px; color: #5e4a7a; }
 .student-info {
-  background: #f9fafb;
-  border-radius: 12px;
-  padding: 16px;
+  background: linear-gradient(135deg, rgba(212,165,255,0.1), rgba(255,170,165,0.08));
+  border-radius: 16px;
+  padding: 18px;
   margin-bottom: 16px;
+  border: 2px solid rgba(212,165,255,0.2);
 }
 .student-info p { margin: 8px 0; font-size: 14px; }
-.kvkk-note { font-size: 12px; color: #6b7280; margin-bottom: 20px; }
-.btn-full { width: 100%; justify-content: center; padding: 14px; }
+.kvkk-note { font-size: 12px; color: #7d6b9a; margin-bottom: 20px; }
+.btn-full { width: 100%; justify-content: center; padding: 16px; }
 </style>

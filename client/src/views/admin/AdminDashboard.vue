@@ -116,13 +116,13 @@ export default {
     const monthlyChart = ref(null)
     const typeChart = ref(null)
 
-    const lineOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(124,58,237,0.08)' } }, x: { grid: { display: false } } } }
+    const lineOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(179,136,255,0.15)' } }, x: { grid: { display: false } } } }
     const pieOptions = { responsive: true, maintainAspectRatio: false }
     const getBadgeEmoji = (l) => ({ none:'⭐', bronze:'🥉', silver:'🥈', gold:'🥇', platinum:'💎' })[l] || '⭐'
     const getSchoolBadgeLabel = (b) => ({ none:'—', inci_dostu:'🏫 İnci Dostu', etki_lideri:'🌟 Etki Lideri', yilin_okulu:'🏆 Yılın Okulu' })[b] || '—'
 
     const typeLabels = { seminer:'Seminer', stant:'Stant', bagis:'Bağış', kermes:'Kermes', bilinclenme:'Bilinçlendirme', sosyal_medya:'Sosyal Medya', farkindalik:'Farkındalık', diger:'Diğer' }
-    const colors = ['#7c3aed','#ec4899','#14b8a6','#f59e0b','#3b82f6','#8b5cf6','#f472b6','#2dd4bf']
+    const colors = ['#b388ff','#ff8b94','#80cbc4','#ffb74d','#64b5f6','#ce93d8','#ffaaa5','#a8e6cf']
 
     onMounted(async () => {
       try {
@@ -146,12 +146,12 @@ export default {
             datasets: [{
               label: 'Saat',
               data: monthly.map(m => m.totalHours),
-              borderColor: '#7c3aed',
-              backgroundColor: 'rgba(124,58,237,0.15)',
+              borderColor: '#b388ff',
+              backgroundColor: 'rgba(179,136,255,0.2)',
               fill: true,
               tension: 0.4,
               pointRadius: 5,
-              pointBackgroundColor: '#ec4899'
+              pointBackgroundColor: '#ff8b94'
             }]
           }
         }
