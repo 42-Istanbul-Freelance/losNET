@@ -28,13 +28,13 @@ echo ""
 
 # Çalışan container'lar
 echo "🏃 Çalışan Container'lar:"
-docker compose ps
+docker compose -f docker-compose.prod.yml ps 2>/dev/null || docker compose ps
 echo ""
 
 # Son 10 log satırı
 echo "📝 Son Loglar:"
-docker compose logs --tail=5 2>&1 | grep -v "Attaching"
+docker compose -f docker-compose.prod.yml logs --tail=5 2>&1 | grep -v "Attaching" || docker compose logs --tail=5 2>&1 | grep -v "Attaching"
 echo ""
 
-echo "💡 Detaylı loglar için: docker compose logs -f [service_name]"
+echo "💡 Detaylı loglar için: docker compose -f docker-compose.prod.yml logs -f [service_name]"
 echo "💡 Sürekli izleme için: watch -n 5 ./monitor.sh"

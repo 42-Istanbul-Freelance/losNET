@@ -35,31 +35,31 @@ fi
 
 # Eski container'ları durdur ve temizle
 echo -e "${YELLOW}Eski container'lar temizleniyor...${NC}"
-docker compose down 2>/dev/null || true
+docker compose -f docker-compose.prod.yml down 2>/dev/null || true
 
 # Image'leri build et (production modda)
 echo -e "${YELLOW}Production image'ları oluşturuluyor...${NC}"
-docker compose build --no-cache
+docker compose -f docker-compose.prod.yml build --no-cache
 
 # Container'ları başlat
 echo -e "${YELLOW}Container'lar başlatılıyor...${NC}"
-docker compose up -d
+docker compose -f docker-compose.prod.yml up -d
 
 # Healthcheck
 echo -e "${YELLOW}Servisler kontrol ediliyor...${NC}"
 sleep 10
 
-if docker compose ps | grep -q "Up"; then
+if docker compose -f docker-compose.prod.yml ps | grep -q "Up"; then
     echo -e "${GREEN}✅ Deploy başarılı!${NC}"
     echo ""
     echo "📊 Çalışan Servisler:"
-    docker compose ps
+    docker compose -f docker-compose.prod.yml ps
     echo ""
-    echo "💡 Logları görmek için: docker compose logs -f"
-    echo "💡 Durumu kontrol için: docker compose ps"
-    echo "💡 Durdurma için: docker compose down"
+    echo "💡 Logları görmek için: docker compose -f docker-compose.prod.yml logs -f"
+    echo "💡 Durumu kontrol için: docker compose -f docker-compose.prod.yml ps"
+    echo "💡 Durdurma için: docker compose -f docker-compose.prod.yml down"
 else
     echo -e "${YELLOW}⚠️  Bazı servisler çalışmıyor olabilir${NC}"
-    docker compose logs
+    docker compose -f docker-compose.prod.yml logs
     exit 1
 fi
