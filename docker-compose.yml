@@ -11,6 +11,8 @@ services:
       - mongo-data:/data/db
     environment:
       MONGO_INITDB_DATABASE: losev-net
+    networks:
+      - backend
 
   api:
     build:
@@ -27,6 +29,9 @@ services:
       - mongodb
     volumes:
       - ./server/uploads:/usr/src/app/uploads
+    networks:
+      - frontend
+      - backend
 
   web:
     build:
@@ -40,6 +45,14 @@ services:
       - "8080:8080"
     depends_on:
       - api
+    networks:
+      - frontend
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
 
 volumes:
   mongo-data:
