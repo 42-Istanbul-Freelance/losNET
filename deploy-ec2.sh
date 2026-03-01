@@ -33,6 +33,13 @@ if [ -f "./optimize-ec2.sh" ]; then
     ./optimize-ec2.sh
 fi
 
+# HTTPS için SSL sertifikası hazırla (yoksa self-signed üret)
+echo -e "${YELLOW}HTTPS sertifika kontrolü yapılıyor...${NC}"
+if [ -f "./setup-https.sh" ]; then
+    chmod +x setup-https.sh
+    ./setup-https.sh "${SERVER_NAME:-localhost}"
+fi
+
 # Eski container'ları durdur ve temizle
 echo -e "${YELLOW}Eski container'lar temizleniyor...${NC}"
 docker compose -f docker-compose.prod.yml down 2>/dev/null || true
@@ -55,6 +62,8 @@ if docker compose -f docker-compose.prod.yml ps | grep -q "Up"; then
     echo "📊 Çalışan Servisler:"
     docker compose -f docker-compose.prod.yml ps
     echo ""
+    echo "🌐 HTTP:  http://${SERVER_NAME:-localhost}"
+    echo "🔒 HTTPS: https://${SERVER_NAME:-localhost}"
     echo "💡 Logları görmek için: docker compose -f docker-compose.prod.yml logs -f"
     echo "💡 Durumu kontrol için: docker compose -f docker-compose.prod.yml ps"
     echo "💡 Durdurma için: docker compose -f docker-compose.prod.yml down"
