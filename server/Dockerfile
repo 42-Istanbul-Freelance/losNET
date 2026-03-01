@@ -1,11 +1,11 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /usr/src/app
 
 COPY package*.json ./
 
 # Install only production dependencies and clean cache
-RUN npm ci --production --no-optional && npm cache clean --force
+RUN npm install --production --omit=dev && npm cache clean --force
 
 COPY . .
 

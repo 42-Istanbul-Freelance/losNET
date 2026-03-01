@@ -1,12 +1,12 @@
 # Build stage
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
 COPY package*.json ./
 
 # Install dependencies with production flag and clean cache
-RUN npm ci --production=false && npm cache clean --force
+RUN npm install && npm cache clean --force
 
 COPY . .
 
