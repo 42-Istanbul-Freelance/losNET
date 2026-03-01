@@ -22,8 +22,6 @@ app.use(express.urlencoded({ extended: true }));
 // Yüklenen dosyaları statik olarak sun
 app.use('/uploads', express.static('uploads'));
 
-const path = require('path');
-
 // API Rotaları
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/activities', require('./routes/activityRoutes'));
@@ -34,10 +32,6 @@ app.use('/api/consent', require('./routes/consentRoutes'));
 app.use('/api/schools', require('./routes/schoolRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 
-// Statik Frontend Dosyalarını Sun (dist klasörü varsa)
-const clientDistPath = path.join(__dirname, '../client/dist');
-app.use(express.static(clientDistPath));
-
 // Sağlık kontrolü
 app.get('/api/health', (req, res) => {
     res.json({
@@ -45,12 +39,6 @@ app.get('/api/health', (req, res) => {
         message: 'LÖSEV İnci Gönüllülük Takip Sistemi API çalışıyor',
         timestamp: new Date().toISOString()
     });
-});
-
-// SPA routing (index.html'e yönlendir)
-app.get(/^(?!\/api|\/uploads).+$/, (req, res) => {
-    const indexPath = path.join(clientDistPath, 'index.html');
-    res.sendFile(indexPath);
 });
 
 // 404 handler
