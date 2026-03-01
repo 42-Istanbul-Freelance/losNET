@@ -1,3 +1,10 @@
+# <https://losnet.murmurs.world/>
+# <https://losnet.murmurs.world/>
+# <https://losnet.murmurs.world/>
+# <https://losnet.murmurs.world/>
+# <https://losnet.murmurs.world/>
+# <https://losnet.murmurs.world/>
+
 # LÖSEV Sosyal Sorumluluk Uygulama Çalışması
 
 Bu depo, katılımcıların geliştireceği **iki farklı uygulama** için başlangıç referanslarını içerir.
