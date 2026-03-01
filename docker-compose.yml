@@ -31,12 +31,12 @@ services:
     command: >
       sh -c "
       echo 'Waiting for mongodb...' &&
-      sleep 5 &&
+      sleep 8 &&
       echo 'Running seeds...' &&
-      npm run seed:admin &&
-      npm run seed:demo &&
+      node scripts/seed-admin.js || true &&
+      node scripts/seed-demo.js || true &&
       echo 'Starting API...' &&
-      npm start"
+      node server.js"
     networks:
       - frontend
       - backend
@@ -62,6 +62,4 @@ networks:
   backend:
     driver: bridge
 
-volumes:
-  mongo-data:
-  upload-data:
+# Volumes are handled by local bind mounts in the services
