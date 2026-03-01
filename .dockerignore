@@ -1,0 +1,55 @@
+# Node modules
+**/node_modules
+**/npm-debug.log
+
+# Git
+.git
+.gitignore
+.github
+
+# Documentation
+*.md
+README.md
+GONULLU_TAKIP.md
+
+# Development files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Docker files
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Test files
+**/__tests__
+**/test
+**/*.test.js
+**/*.spec.js
+
+# Build cache
+.cache
+dist
+build
+
+# Environment files
+.env.local
+.env.*.local
+
+# Uploads (handled by volumes)
+uploads/
+**/uploads/*
+
+# MongoDB data (handled by volumes)
+docker_data/
+
+# Scripts
+*.sh
+deploy.bash
+
+# Misc
+*.log
+.DS_Store

@@ -2,18 +2,28 @@ version: '3.8'
 
 services:
   mongodb:
-    image: mongo:7
+    image: mongo:7-alpine
     container_name: losev-mongodb
     restart: unless-stopped
     ports:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
+    command: mongod --wiredTigerCacheSizeGB 0.25 --nojournal
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
     networks:
       - backend
 
@@ -26,8 +36,20 @@ services:
     environment:
       - PORT=5000
       - MONGO_URI=mongodb://mongodb:27017/losev-net
+      - NODE_ENV=production
     volumes:
       - api_uploads:/usr/src/app/uploads
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    depends_on:
+      mongodb:
+        condition: service_healthy
     networks:
       - frontend
       - backend
@@ -39,6 +61,14 @@ services:
       args:
         - VUE_APP_API_URL=/api
     container_name: losev-web
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
+        reservations:
+          cpus: '0.05'
+          memory: 64M
     networks:
       - frontend
 
@@ -50,6 +80,14 @@ services:
       - "8080:8080"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 64M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
     depends_on:
       - api
       - web

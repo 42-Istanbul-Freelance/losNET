@@ -7,21 +7,33 @@
 
     <!-- İstatistik kartları -->
     <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-value">{{ hours.totalHours || 0 }}</div>
-        <div class="stat-label">Toplam Saat</div>
+      <div class="stat-card stat-card-1">
+        <div class="stat-icon">⏱️</div>
+        <div class="stat-content">
+          <div class="stat-label">Toplam Saat</div>
+          <div class="stat-value">{{ hours.totalHours || 0 }}</div>
+        </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-value">{{ currentMonthHours }}</div>
-        <div class="stat-label">Bu Ay</div>
+      <div class="stat-card stat-card-2">
+        <div class="stat-icon">📅</div>
+        <div class="stat-content">
+          <div class="stat-label">Bu Ay</div>
+          <div class="stat-value">{{ currentMonthHours }}</div>
+        </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-value">{{ currentYearHours }}</div>
-        <div class="stat-label">Bu Yıl</div>
+      <div class="stat-card stat-card-3">
+        <div class="stat-icon">📊</div>
+        <div class="stat-content">
+          <div class="stat-label">Bu Yıl</div>
+          <div class="stat-value">{{ currentYearHours }}</div>
+        </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-value">{{ badgeEmoji }}</div>
-        <div class="stat-label">{{ badgeLabel }}</div>
+      <div class="stat-card stat-card-4">
+        <div class="stat-icon">{{ badgeEmoji }}</div>
+        <div class="stat-content">
+          <div class="stat-label">Rütben</div>
+          <div class="stat-value stat-badge-label">{{ badgeLabel }}</div>
+        </div>
       </div>
     </div>
 
@@ -236,6 +248,99 @@ export default {
   gap: 16px;
 }
 
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  position: relative;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+}
+
+.stat-card-1::before { background: linear-gradient(90deg, #FF6B6B, #FF8E72); }
+.stat-card-2::before { background: linear-gradient(90deg, #4ECDC4, #44A08D); }
+.stat-card-3::before { background: linear-gradient(90deg, #FFD93D, #FFA500); }
+.stat-card-4::before { background: linear-gradient(90deg, #A8E6CF, #56CCF2); }
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.stat-icon {
+  font-size: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.stat-card-1 .stat-icon {
+  background: linear-gradient(135deg, rgba(255, 107, 107, 0.15), rgba(255, 142, 114, 0.15));
+}
+
+.stat-card-2 .stat-icon {
+  background: linear-gradient(135deg, rgba(78, 205, 196, 0.15), rgba(68, 160, 141, 0.15));
+}
+
+.stat-card-3 .stat-icon {
+  background: linear-gradient(135deg, rgba(255, 217, 61, 0.15), rgba(255, 165, 0, 0.15));
+}
+
+.stat-card-4 .stat-icon {
+  background: linear-gradient(135deg, rgba(168, 230, 207, 0.15), rgba(86, 204, 242, 0.15));
+}
+
+.stat-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.stat-badge-label {
+  font-size: 14px !important;
+}
+
 .info-strip {
   display: flex;
   gap: 12px;
@@ -326,5 +431,13 @@ export default {
 @media (max-width: 768px) {
   .grid-2 { grid-template-columns: 1fr; }
   .info-strip { flex-direction: column; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .stat-card { padding: 16px; gap: 12px; }
+  .stat-icon { width: 48px; height: 48px; font-size: 28px; }
+  .stat-value { font-size: 24px; }
+}
+
+@media (max-width: 480px) {
+  .stats-grid { grid-template-columns: 1fr; }
 }
 </style>
