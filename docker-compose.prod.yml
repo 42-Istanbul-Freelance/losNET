@@ -9,7 +9,7 @@ services:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
-    command: mongod --wiredTigerCacheSizeGB 0.25 --nojournal
+    command: mongod --wiredTigerCacheSizeGB 0.25
     mem_limit: 256m
     memswap_limit: 384m
     healthcheck:
@@ -48,8 +48,8 @@ services:
       args:
         - VUE_APP_API_URL=/api
     container_name: losev-web
-    mem_limit: 128m
-    memswap_limit: 192m
+    mem_limit: 256m
+    memswap_limit: 384m
     networks:
       - frontend
 

@@ -9,7 +9,7 @@ services:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
-    command: mongod --wiredTigerCacheSizeGB 0.25 --nojournal
+    command: mongod --wiredTigerCacheSizeGB 0.25
     healthcheck:
       test: ["CMD-SHELL", "mongosh --quiet --eval 'db.runCommand({ ping: 1 })' || exit 1"]
       interval: 15s
