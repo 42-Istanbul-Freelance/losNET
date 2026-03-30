@@ -79,7 +79,7 @@ exports.createActivity = async (req, res) => {
         if (participantStudents && Array.isArray(participantStudents)) {
             participants = participantStudents.map(studentId => ({
                 student: studentId,
-                participationStatus: 'pending',
+                participationStatus: 'invited',
                 requestedAt: new Date()
             }));
         }
@@ -104,6 +104,7 @@ exports.createActivity = async (req, res) => {
             photos: photos || [],
             documents: documents || [],
             participantStudents: participants,
+            isPrivate: req.body.isPrivate || false,
             status: 'approved' // etkinlikler yayınlanmış kabul edilir; saat/akış katılım onayıyla belirlenir
         });
 
@@ -121,7 +122,7 @@ exports.createActivity = async (req, res) => {
 // Kullanıcının faaliyetlerini listele
 exports.getActivities = async (req, res) => {
     try {
-        const { status, type, startDate, endDate, search, page = 1, limit = 20 } = req.query;
+        const { status, type, startDate, endDate, search, page = 1, limit = 20, filter } = req.query;
         const query = {};
 
         // Öğrenci: etkinlikleri görür (okulunun etkinlikleri + kendisinin katıldığı/istek attığı)
@@ -129,7 +130,7 @@ exports.getActivities = async (req, res) => {
             query.creatorRole = { $in: ['teacher', 'admin'] };
             query.status = 'approved';
             query.$or = [
-                { school: req.user.school },
+                { school: req.user.school, isPrivate: { $ne: true } },
                 { 'participantStudents.student': req.user._id }
             ];
 
@@ -145,10 +146,22 @@ exports.getActivities = async (req, res) => {
         }
         // Öğretmen okulundaki tüm faaliyetleri ve kendi oluşturduğu faaliyetleri görür
         else if (req.user.role === 'teacher') {
-            query.$or = [
-                { school: req.user.school },
-                { createdBy: req.user._id, creatorRole: 'teacher' }
-            ];
+            if (filter === 'created') {
+                query.createdBy = req.user._id;
+                query.creatorRole = 'teacher';
+            } else if (filter === 'approved') {
+                query.participantStudents = {
+                    $elemMatch: {
+                        approvedBy: req.user._id,
+                        participationStatus: 'approved'
+                    }
+                };
+            } else {
+                query.$or = [
+                    { school: req.user.school },
+                    { createdBy: req.user._id, creatorRole: 'teacher' }
+                ];
+            }
         }
         // Admin hepsini görür
 
@@ -362,5 +375,87 @@ exports.approveParticipation = async (req, res) => {
         res.json(updatedActivity);
     } catch (error) {
         res.status(500).json({ message: 'Katılım işlemi sırasında hata oluştu', error: error.message });
+    }
+};
+
+// Öğrencinin daveti kabul ya da reddetmesi (öğrenci)
+exports.respondToInvitation = async (req, res) => {
+    try {
+        const { accept } = req.body;
+        const activity = await Activity.findById(req.params.id);
+
+        if (!activity) {
+            return res.status(404).json({ message: 'Faaliyet bulunamadı' });
+        }
+
+        const participantIndex = activity.participantStudents.findIndex(
+            p => p.student.toString() === req.user._id.toString()
+        );
+
+        if (participantIndex === -1 || activity.participantStudents[participantIndex].participationStatus !== 'invited') {
+            return res.status(400).json({ message: 'Geçerli bir davet bulunamadı' });
+        }
+
+        const participant = activity.participantStudents[participantIndex];
+        participant.participationStatus = accept ? 'approved' : 'rejected';
+        participant.approvedBy = req.user._id;
+        participant.approvedAt = new Date();
+
+        await activity.save();
+
+        if (accept) {
+            await recalcStudentTotals(req.user._id);
+            const schoolId = activity.school || req.user.school;
+            await recalcSchoolTotals(schoolId);
+        }
+
+        res.json({ message: accept ? 'Davet kabul edildi' : 'Davet reddedildi', activity });
+    } catch (error) {
+        res.status(500).json({ message: 'Davete yanıt verilirken hata oluştu', error: error.message });
+    }
+};
+
+// Faaliyet güncelle (öğretmen/admin)
+exports.updateActivity = async (req, res) => {
+    try {
+        const activity = await Activity.findById(req.params.id);
+        if (!activity) {
+            return res.status(404).json({ message: 'Faaliyet bulunamadı' });
+        }
+
+        if (req.user.role === 'teacher' && activity.createdBy.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Sadece kendi faaliyetlerinizi güncelleyebilirsiniz' });
+        }
+
+        const { date, type, hours, description, location, participantCount, photos, documents, participantStudents, isPrivate } = req.body;
+
+        activity.date = date || activity.date;
+        activity.type = type || activity.type;
+        activity.hours = hours || activity.hours;
+        activity.description = description !== undefined ? description : activity.description;
+        activity.location = location !== undefined ? location : activity.location;
+        activity.participantCount = participantCount !== undefined ? participantCount : activity.participantCount;
+        activity.photos = photos || activity.photos;
+        activity.documents = documents || activity.documents;
+        if (isPrivate !== undefined) activity.isPrivate = isPrivate;
+
+        if (participantStudents && Array.isArray(participantStudents)) {
+            const currentStudents = activity.participantStudents.map(p => p.student.toString());
+            const newStudents = participantStudents.filter(id => !currentStudents.includes(id));
+
+            newStudents.forEach(studentId => {
+                activity.participantStudents.push({
+                    student: studentId,
+                    participationStatus: 'invited',
+                    requestedAt: new Date()
+                });
+            });
+            // We do NOT remove existing students here to preserve their active statuses/hours.
+        }
+
+        await activity.save();
+        res.json(activity);
+    } catch (error) {
+        res.status(500).json({ message: 'Faaliyet güncellenirken hata oluştu', error: error.message });
     }
 };

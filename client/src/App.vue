@@ -15,7 +15,6 @@
         <template v-if="authStore.isStudent">
           <router-link to="/student/dashboard" class="nav-link">Panelim</router-link>
           <router-link to="/student/activities" class="nav-link">Faaliyetlerim</router-link>
-          <router-link to="/student/activities/new" class="nav-link nav-link-primary">+ Faaliyet Ekle</router-link>
           <router-link to="/student/certificates" class="nav-link">Rozetlerim</router-link>
           <router-link to="/student/profile" class="nav-link">Profilim</router-link>
         </template>
@@ -23,13 +22,16 @@
         <!-- Öğretmen menüsü -->
         <template v-if="authStore.isTeacher">
           <router-link to="/teacher/dashboard" class="nav-link">Panel</router-link>
+          <router-link to="/teacher/activities" class="nav-link">Faaliyetler</router-link>
           <router-link to="/teacher/pending" class="nav-link">Onay Bekleyenler</router-link>
+          <router-link to="/teacher/activities/new" class="nav-link nav-link-primary">+ Etkinlik Oluştur</router-link>
           <router-link to="/teacher/school-report" class="nav-link">Okul Raporu</router-link>
         </template>
 
         <!-- Admin menüsü -->
         <template v-if="authStore.isAdmin">
           <router-link to="/admin/dashboard" class="nav-link">Genel Merkez</router-link>
+          <router-link to="/admin/activities/new" class="nav-link nav-link-primary">+ Etkinlik Oluştur</router-link>
         </template>
       </div>
 

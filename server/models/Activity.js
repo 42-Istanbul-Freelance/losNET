@@ -59,6 +59,10 @@ const activitySchema = new mongoose.Schema({
         default: 'pending',
         index: true
     },
+    isPrivate: {
+        type: Boolean,
+        default: false
+    },
     reviewNote: {
         type: String,
         trim: true
@@ -88,7 +92,7 @@ const activitySchema = new mongoose.Schema({
         },
         participationStatus: {
             type: String,
-            enum: ['pending', 'approved', 'rejected'],
+            enum: ['pending', 'approved', 'rejected', 'invited'],
             default: 'pending'
         },
         requestedAt: {

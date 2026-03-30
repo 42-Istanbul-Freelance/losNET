@@ -10,6 +10,7 @@
         <select v-model="statusFilter" class="form-select filter-select" @change="loadActivities">
           <option value="">Tüm Durumlar</option>
           <option value="pending">Bekliyor</option>
+          <option value="invited">Davet Edildi</option>
           <option value="approved">Onaylandı</option>
           <option value="rejected">Reddedildi</option>
         </select>
@@ -56,8 +57,12 @@
                 </span>
               </td>
               <td>
+                <div v-if="getMyStatus(a) === 'invited'" class="action-buttons">
+                  <button class="btn btn-success btn-sm btn-icon" :disabled="requestingId === a._id" @click="respondInvitation(a._id, true)">✓ Kabul Et</button>
+                  <button class="btn btn-danger btn-sm btn-icon" :disabled="requestingId === a._id" @click="respondInvitation(a._id, false)">✕ Reddet</button>
+                </div>
                 <button
-                  v-if="canRequest(a)"
+                  v-else-if="canRequest(a)"
                   class="btn btn-primary btn-sm"
                   :disabled="requestingId === a._id"
                   @click="requestParticipation(a._id)"
@@ -130,13 +135,25 @@ export default {
       }
     }
 
+    const respondInvitation = async (id, accept) => {
+      requestingId.value = id
+      try {
+        await api.post(`/activities/${id}/respond-invitation`, { accept })
+        await loadActivities()
+      } catch (err) {
+        console.error(err)
+      } finally {
+        requestingId.value = ''
+      }
+    }
+
     const changePage = (dir) => { pagination.page += dir; loadActivities() }
     const formatDate = (d) => new Date(d).toLocaleDateString('tr-TR')
     const getTypeLabel = (t) => ({ seminer:'Seminer', stant:'Stant', bagis:'Bağış', kermes:'Kermes', bilinclenme:'Bilinçlendirme', sosyal_medya:'Sosyal Medya', farkindalik:'Farkındalık', diger:'Diğer' })[t] || t
-    const getStatusLabel = (s) => ({ none:'—', pending:'Bekliyor', approved:'Onaylandı', rejected:'Reddedildi' })[s] || s
+    const getStatusLabel = (s) => ({ none:'—', pending:'Bekliyor', invited:'Davet Edildi', approved:'Onaylandı', rejected:'Reddedildi' })[s] || s
 
     onMounted(loadActivities)
-    return { authStore, activities, loading, statusFilter, typeFilter, pagination, requestingId, loadActivities, changePage, getMyStatus, canRequest, requestParticipation, formatDate, getTypeLabel, getStatusLabel }
+    return { authStore, activities, loading, statusFilter, typeFilter, pagination, requestingId, loadActivities, changePage, getMyStatus, canRequest, requestParticipation, respondInvitation, formatDate, getTypeLabel, getStatusLabel }
   }
 }
 </script>
@@ -148,5 +165,8 @@ export default {
 .empty-state { text-align: center; padding: 40px; color: var(--text-secondary); }
 .pagination { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
 .btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-icon { display: flex; align-items: center; gap: 4px; }
+.action-buttons { display: flex; gap: 6px; }
 .no-action { color: var(--text-secondary); font-size: 13px; }
+.status-invited { background: var(--warning-light); color: var(--warning); }
 </style>

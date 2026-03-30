@@ -17,6 +17,7 @@ const StudentProfile = () => import('../views/student/StudentProfile.vue')
 const CertificateView = () => import('../views/student/CertificateView.vue')
 
 const TeacherDashboard = () => import('../views/teacher/TeacherDashboard.vue')
+const TeacherActivityList = () => import('../views/teacher/TeacherActivityList.vue')
 const TeacherActivityForm = () => import('../views/teacher/TeacherActivityForm.vue')
 const PendingActivities = () => import('../views/teacher/PendingActivities.vue')
 const StudentRegistrations = () => import('../views/teacher/StudentRegistrations.vue')
@@ -93,6 +94,12 @@ const routes = [
     meta: { requiresAuth: true, role: 'teacher' }
   },
   {
+    path: '/teacher/activities',
+    name: 'TeacherActivityList',
+    component: TeacherActivityList,
+    meta: { requiresAuth: true, role: 'teacher' }
+  },
+  {
     path: '/teacher/activities/new',
     name: 'TeacherActivityForm',
     component: TeacherActivityForm,
@@ -163,35 +170,73 @@ router.beforeEach(async (to, from, next) => {
   }
 
   // Auth var ama profil/rol henüz yüklenmemişse önce tamamla.
-  // Aksi halde guest/role redirect'leri /login üzerinde sonsuz döngüye girebiliyor.
   if (authStore.isAuthenticated && !authStore.role) {
     try {
       await authStore.fetchProfile()
     } catch {
       await authStore.logout()
+      if (to.path !== '/login') {
+        return next('/login')
+      } else {
+        return next()
+      }
     }
   }
 
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next('/login')
-  } else if (to.meta.guest && authStore.isAuthenticated) {
-    // Giriş yapmış kullanıcıyı rolüne göre yönlendir
+  const isAuthenticated = authStore.isAuthenticated;
+  const role = authStore.role;
+
+  // 1. Root path (/) yönlendirmesi
+  if (to.path === '/') {
+    if (isAuthenticated && role) {
+      const dashboardMap = {
+        student: '/student/dashboard',
+        teacher: '/teacher/dashboard',
+        admin: '/admin/dashboard'
+      }
+      return next(dashboardMap[role] || '/login')
+    }
+    return next('/login')
+  }
+
+  // 2. Auth gerektiren sayfalara yetkisiz erişim kontrolü
+  if (to.meta.requiresAuth && !isAuthenticated) {
+    if (to.path !== '/login') {
+      return next('/login')
+    }
+    return next()
+  }
+
+  // 3. Giriş yapmış kullanıcının guest sayfalarına (örn. /login, /register) erişimi
+  if (to.meta.guest) {
+    if (isAuthenticated && role) {
+      const dashboardMap = {
+        student: '/student/dashboard',
+        teacher: '/teacher/dashboard',
+        admin: '/admin/dashboard'
+      }
+      if (to.path !== dashboardMap[role]) {
+        return next(dashboardMap[role] || '/login')
+      }
+    }
+    return next()
+  }
+
+  // 4. Yetki (Role) kontrolü (sadece requireAuth olan rotalar için)
+  if (to.meta.role && role !== to.meta.role && isAuthenticated) {
     const dashboardMap = {
       student: '/student/dashboard',
       teacher: '/teacher/dashboard',
       admin: '/admin/dashboard'
     }
-    next(dashboardMap[authStore.role] || '/login')
-  } else if (to.meta.role && authStore.role !== to.meta.role) {
-    // Yanlış role sahip kullanıcıyı kendi dashboard'una yönlendir
-    const dashboardMap = {
-      student: '/student/dashboard',
-      teacher: '/teacher/dashboard',
-      admin: '/admin/dashboard'
+    if (to.path !== dashboardMap[role]) {
+      return next(dashboardMap[role] || '/login')
     }
-    next(dashboardMap[authStore.role] || '/login')
-  } else if (authStore.isAuthenticated && authStore.role === 'student' && authStore.registrationStatus !== 'approved') {
-    // Onaylanmamış öğrenciler sadece dashboard ve profile sayfalarına erişebilir
+    return next()
+  }
+
+  // 5. Onaylanmamış öğrenci kontrolü
+  if (isAuthenticated && role === 'student' && authStore.registrationStatus !== 'approved') {
     const approvedPages = [
       'StudentDashboard',
       'StudentProfile',
@@ -200,14 +245,13 @@ router.beforeEach(async (to, from, next) => {
       'Home',
       'Consent'
     ]
-    if (!approvedPages.includes(to.name)) {
-      next('/student/dashboard')
-    } else {
-      next()
+    if (!approvedPages.includes(to.name) && to.path !== '/student/dashboard') {
+      return next('/student/dashboard')
     }
-  } else {
-    next()
   }
+
+  // 6. Hiçbir engele takılmadıysa devam et
+  return next()
 })
 
 export default router

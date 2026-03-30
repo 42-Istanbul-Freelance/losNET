@@ -68,10 +68,10 @@ const requireApprovedRegistration = (req, res, next) => {
         return res.status(401).json({ message: 'Kullanıcı profili bulunamadı' });
     }
 
-    // Sadece öğrendiler için checked
-    if (req.user.role === 'student' && req.user.registrationStatus !== 'approved') {
+    // Öğrenci ve öğretmenler için onay kontrolü (admin hariç)
+    if (req.user.role !== 'admin' && req.user.registrationStatus !== 'approved') {
         return res.status(403).json({
-            message: 'Kaydınız henüz onaylanmamştır. Lütfen öğretmeninizin onayını bekleyiniz.'
+            message: 'Kaydınız henüz onaylanmamıştır. Lütfen onay sürecinin tamamlanmasını bekleyiniz.'
         });
     }
 

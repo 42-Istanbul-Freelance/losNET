@@ -96,7 +96,7 @@
       <div class="card-title">📋 Son Faaliyetler</div>
       <div v-if="recentActivities.length === 0" class="empty-state">
         <p>Henüz faaliyet girişi yapılmamış</p>
-        <router-link to="/student/activities/new" class="btn btn-primary">İlk Faaliyetini Ekle</router-link>
+        <p class="helper-text">Faaliyetler yalnızca öğretmen veya genel merkez tarafından oluşturulur.</p>
       </div>
       <div v-else class="activity-list">
         <div v-for="activity in recentActivities" :key="activity._id" class="activity-item">
@@ -403,7 +403,7 @@ export default {
   color: var(--text-secondary);
 }
 
-.empty-state .btn { margin-top: 12px; }
+.helper-text { margin-top: 10px; font-size: 14px; }
 
 .activity-list { display: flex; flex-direction: column; gap: 8px; }
 

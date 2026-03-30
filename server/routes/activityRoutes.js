@@ -6,6 +6,9 @@ const activityController = require('../controllers/activityController');
 // POST /api/activities - Yeni etkinlik oluştur (öğretmen/admin)
 router.post('/', authenticate, requireRole('teacher', 'admin'), requireApprovedRegistration, activityController.createActivity);
 
+// PUT /api/activities/:id - Etkinlik güncelle (öğretmen/admin)
+router.put('/:id', authenticate, requireRole('teacher', 'admin'), requireApprovedRegistration, activityController.updateActivity);
+
 // GET /api/activities - Faaliyetleri listele (rol bazlı)
 router.get('/', authenticate, activityController.getActivities);
 
@@ -20,5 +23,8 @@ router.post('/:id/participation-request', authenticate, requireRole('student'), 
 
 // PUT /api/activities/:id/participation/:studentId - Katılımı onayla/reddet (öğretmen/admin)
 router.put('/:id/participation/:studentId', authenticate, requireRole('teacher', 'admin'), requireApprovedRegistration, activityController.approveParticipation);
+
+// POST /api/activities/:id/respond-invitation - Öğrencinin daveti kabul/reddetmesi
+router.post('/:id/respond-invitation', authenticate, requireRole('student'), requireApprovedRegistration, activityController.respondToInvitation);
 
 module.exports = router;

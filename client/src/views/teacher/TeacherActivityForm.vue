@@ -95,6 +95,13 @@
           </div>
         </div>
 
+        <div class="form-group checkbox-group">
+          <label class="checkbox-label">
+            <input type="checkbox" v-model="form.isPrivate" />
+            Sadece davet ettiğim öğrenciler görebilir (Özel Etkinlik)
+          </label>
+        </div>
+
         <div class="form-group">
           <label class="form-label">📷 Fotoğraf Yükle</label>
           <input type="file" @change="handlePhotoUpload" accept="image/*" multiple class="form-input" />
@@ -154,7 +161,8 @@ export default {
       participantCount: null,
       photos: [],
       documents: [],
-      participantStudents: []
+      participantStudents: [],
+      isPrivate: false
     })
 
     const filteredStudents = computed(() => {
@@ -197,6 +205,7 @@ export default {
           form.photos = activity.photos || []
           form.documents = activity.documents || []
           form.participantStudents = activity.participantStudents?.map(p => p.student?._id || p.student) || []
+          form.isPrivate = activity.isPrivate || false
 
           if (activity.photos?.length) {
             uploadedPhotos.value = activity.photos.map((url, i) => ({ name: `Fotoğraf ${i + 1}`, url }))

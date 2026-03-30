@@ -38,7 +38,7 @@ exports.register = async (req, res) => {
             district,
             grade,
             coordinatorTeacher,
-            registrationStatus: role === 'student' ? 'pending' : 'approved'
+            registrationStatus: role === 'admin' ? 'approved' : 'pending'
         });
 
         const populatedUser = await User.findById(user._id).populate('school');
@@ -88,15 +88,20 @@ exports.updateProfile = async (req, res) => {
     }
 };
 
-// Onay bekleyen öğrencileri listele (öğretmen/admin)
+// Onay bekleyen kayıtları listele (öğretmen/admin)
 exports.getPendingRegistrations = async (req, res) => {
     try {
-        const pendingStudents = await User.find({
-            role: 'student',
-            registrationStatus: 'pending'
-        }).populate('school', 'name city');
+        const query = { registrationStatus: 'pending' };
 
-        res.json(pendingStudents);
+        // Öğretmenler sadece öğrenci onaylarını görebilir
+        if (req.user.role === 'teacher') {
+            query.role = 'student';
+        }
+        // Admin hem öğrenci hem öğretmen onaylarını görebilir
+
+        const pending = await User.find(query).populate('school', 'name city');
+
+        res.json(pending);
     } catch (error) {
         res.status(500).json({ message: 'Onay bekleyen kayıtlar alınırken hata oluştu', error: error.message });
     }
@@ -110,6 +115,10 @@ exports.approveStudent = async (req, res) => {
         const student = await User.findById(userId);
         if (!student) {
             return res.status(404).json({ message: 'Öğrenci bulunamadı' });
+        }
+
+        if (student.role !== 'student') {
+            return res.status(400).json({ message: 'Bu endpoint sadece öğrenci onayı içindir' });
         }
 
         if (student.registrationStatus !== 'pending') {
@@ -141,6 +150,10 @@ exports.rejectStudent = async (req, res) => {
             return res.status(404).json({ message: 'Öğrenci bulunamadı' });
         }
 
+        if (student.role !== 'student') {
+            return res.status(400).json({ message: 'Bu endpoint sadece öğrenci reddi içindir' });
+        }
+
         if (student.registrationStatus !== 'pending') {
             return res.status(400).json({ message: 'Bu kaydın durumu zaten işlenmişti' });
         }
@@ -157,5 +170,71 @@ exports.rejectStudent = async (req, res) => {
         });
     } catch (error) {
         res.status(500).json({ message: 'Öğrenci reddedilirken hata oluştu', error: error.message });
+    }
+};
+
+// Öğretmen kaydını onayla (SADECE admin)
+exports.approveTeacher = async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        const teacher = await User.findById(userId);
+        if (!teacher) {
+            return res.status(404).json({ message: 'Öğretmen bulunamadı' });
+        }
+
+        if (teacher.role !== 'teacher') {
+            return res.status(400).json({ message: 'Bu endpoint sadece öğretmen onayı içindir' });
+        }
+
+        if (teacher.registrationStatus !== 'pending') {
+            return res.status(400).json({ message: 'Bu kaydın durumu zaten işlenmişti' });
+        }
+
+        teacher.registrationStatus = 'approved';
+        teacher.approvedBy = req.user._id;
+        teacher.approvedAt = new Date();
+        await teacher.save();
+
+        res.json({
+            message: 'Öğretmen kaydı onaylandı',
+            teacher: teacher
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Öğretmen onaylanırken hata oluştu', error: error.message });
+    }
+};
+
+// Öğretmen kaydını reddet (SADECE admin)
+exports.rejectTeacher = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { rejectionReason } = req.body;
+
+        const teacher = await User.findById(userId);
+        if (!teacher) {
+            return res.status(404).json({ message: 'Öğretmen bulunamadı' });
+        }
+
+        if (teacher.role !== 'teacher') {
+            return res.status(400).json({ message: 'Bu endpoint sadece öğretmen reddi içindir' });
+        }
+
+        if (teacher.registrationStatus !== 'pending') {
+            return res.status(400).json({ message: 'Bu kaydın durumu zaten işlenmişti' });
+        }
+
+        teacher.registrationStatus = 'rejected';
+        teacher.approvedBy = req.user._id;
+        teacher.approvedAt = new Date();
+        teacher.rejectionReason = rejectionReason || '';
+        await teacher.save();
+
+        res.json({
+            message: 'Öğretmen kaydı reddedildi',
+            teacher: teacher
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Öğretmen reddedilirken hata oluştu', error: error.message });
     }
 };
