@@ -5,14 +5,32 @@ const Certificate = require('../models/Certificate');
 const { updateSchoolBadgeAfterActivity } = require('../services/schoolBadgeService');
 const { createNotification } = require('./notificationController');
 
-// Yeni faaliyet oluştur (öğrenci)
+// Yeni faaliyet oluştur (öğretmen/admin)
 exports.createActivity = async (req, res) => {
     try {
-        const { date, type, hours, description, location, participantCount, photos, documents } = req.body;
+        const { date, type, hours, description, location, participantCount, photos, documents, participantStudents } = req.body;
+
+        // Teacher/admin faaliyeti kendi okulundan/tüm okullardan öğrencilerle oluşturabilir
+        let school = null;
+        if (req.user.role === 'teacher') {
+            school = req.user.school;
+        }
+
+        // Katılımcı öğrencileri işle
+        let participants = [];
+        if (participantStudents && Array.isArray(participantStudents)) {
+            participants = participantStudents.map(studentId => ({
+                student: studentId,
+                participationStatus: 'pending',
+                requestedAt: new Date()
+            }));
+        }
 
         const activity = await Activity.create({
-            student: req.user._id,
-            school: req.user.school,
+            createdBy: req.user._id,
+            creatorRole: req.user.role,
+            student: null, // Teacher/admin activities'de student field null
+            school: school,
             date,
             type,
             hours,
@@ -20,10 +38,16 @@ exports.createActivity = async (req, res) => {
             location,
             participantCount,
             photos: photos || [],
-            documents: documents || []
+            documents: documents || [],
+            participantStudents: participants
         });
 
-        res.status(201).json(activity);
+        const populatedActivity = await Activity.findById(activity._id)
+            .populate('createdBy', 'name email role')
+            .populate('participantStudents.student', 'name email grade')
+            .populate('school', 'name city');
+
+        res.status(201).json(populatedActivity);
     } catch (error) {
         res.status(500).json({ message: 'Faaliyet oluşturulurken hata oluştu', error: error.message });
     }
@@ -37,8 +61,8 @@ exports.updateActivity = async (req, res) => {
             return res.status(404).json({ message: 'Faaliyet bulunamadı' });
         }
 
-        // Sadece kendi faaliyetini düzenleyebilir
-        if (activity.student.toString() !== req.user._id.toString()) {
+        // Sadece kendi faaliyetini düzenleyebilir (student tarafından oluşturulan faaliyetler)
+        if (activity.createdBy.toString() !== req.user._id.toString() || activity.creatorRole !== 'student') {
             return res.status(403).json({ message: 'Bu faaliyeti düzenleme yetkiniz yok' });
         }
 
@@ -65,6 +89,7 @@ exports.updateActivity = async (req, res) => {
         await activity.save();
 
         const updated = await Activity.findById(activity._id)
+            .populate('createdBy', 'name email role')
             .populate('student', 'name email grade')
             .populate('school', 'name city');
 
@@ -80,13 +105,19 @@ exports.getActivities = async (req, res) => {
         const { status, type, startDate, endDate, search, page = 1, limit = 20 } = req.query;
         const query = {};
 
-        // Öğrenci kendi faaliyetlerini görür
+        // Öğrenci kendi faaliyetlerini ve katılabilecekleri faaliyetleri görür
         if (req.user.role === 'student') {
-            query.student = req.user._id;
+            query.$or = [
+                { createdBy: req.user._id, creatorRole: 'student' }, // Kendi oluşturduğu faaliyetler
+                { 'participantStudents.student': req.user._id } // Katılmak için davet edilen faaliyetler
+            ];
         }
-        // Öğretmen okulundaki faaliyetleri görür
+        // Öğretmen okulundaki tüm faaliyetleri ve kendi oluşturduğu faaliyetleri görür
         else if (req.user.role === 'teacher') {
-            query.school = req.user.school;
+            query.$or = [
+                { school: req.user.school },
+                { createdBy: req.user._id, creatorRole: 'teacher' }
+            ];
         }
         // Admin hepsini görür
 
@@ -105,19 +136,23 @@ exports.getActivities = async (req, res) => {
         }
 
         let activities = await Activity.find(query)
+            .populate('createdBy', 'name email role')
             .populate('student', 'name email grade')
+            .populate('participantStudents.student', 'name email grade')
             .populate('school', 'name city')
             .populate('reviewedBy', 'name')
             .sort({ createdAt: -1 })
             .skip((page - 1) * limit)
             .limit(parseInt(limit));
 
-        // Öğrenci adına göre arama (populate sonrası filter)
+        // Adına göre arama (populate sonrası filter)
         if (search && req.user.role !== 'student') {
             const searchLower = search.toLowerCase();
-            activities = activities.filter(a =>
-                a.student?.name?.toLowerCase().includes(searchLower)
-            );
+            activities = activities.filter(a => {
+                const creatorName = a.createdBy?.name?.toLowerCase() || '';
+                const studentName = a.student?.name?.toLowerCase() || '';
+                return creatorName.includes(searchLower) || studentName.includes(searchLower);
+            });
         }
 
         const total = await Activity.countDocuments(query);
@@ -140,7 +175,9 @@ exports.getActivities = async (req, res) => {
 exports.getActivityById = async (req, res) => {
     try {
         const activity = await Activity.findById(req.params.id)
+            .populate('createdBy', 'name email role')
             .populate('student', 'name email grade school')
+            .populate('participantStudents.student', 'name email grade')
             .populate('school', 'name city')
             .populate('reviewedBy', 'name');
 
@@ -281,18 +318,138 @@ exports.getPendingActivities = async (req, res) => {
     try {
         const query = { status: 'pending' };
 
-        // Öğretmen sadece kendi okulunun faaliyetlerini görür
+        // Öğretmen sadece kendi okulunun faaliyetlerini ve kendi oluşturduklarını görür
         if (req.user.role === 'teacher') {
-            query.school = req.user.school;
+            query.$or = [
+                { school: req.user.school },
+                { createdBy: req.user._id, creatorRole: 'teacher' }
+            ];
         }
 
         const activities = await Activity.find(query)
+            .populate('createdBy', 'name email role')
             .populate('student', 'name email grade')
+            .populate('participantStudents.student', 'name email grade')
             .populate('school', 'name city')
             .sort({ createdAt: -1 });
 
         res.json(activities);
     } catch (error) {
         res.status(500).json({ message: 'Bekleyen faaliyetler alınırken hata oluştu', error: error.message });
+    }
+};
+
+// Öğrencinin etkinliğe katılım isteği (öğrenci)
+exports.requestParticipation = async (req, res) => {
+    try {
+        const activity = await Activity.findById(req.params.id);
+        if (!activity) {
+            return res.status(404).json({ message: 'Faaliyet bulunamadı' });
+        }
+
+        // Teacher/admin tarafından oluşturulan etkinliklere katılım istenebilir
+        if (activity.creatorRole === 'student') {
+            return res.status(400).json({ message: 'Bu faaliyet türüne katılım isteği gönderilemez' });
+        }
+
+        // Zaten katılım isteği gönderip göndermedik kontrol et
+        const existingRequest = activity.participantStudents.find(
+            p => p.student.toString() === req.user._id.toString()
+        );
+        if (existingRequest) {
+            return res.status(400).json({ message: 'Zaten bu faaliyete katılım isteği gönderdiniz' });
+        }
+
+        // Katılım isteği ekle
+        activity.participantStudents.push({
+            student: req.user._id,
+            participationStatus: 'pending',
+            requestedAt: new Date()
+        });
+        await activity.save();
+
+        // Notification gönder (öğretmene)
+        const { createNotification } = require('./notificationController');
+        await createNotification({
+            user: activity.createdBy,
+            type: 'participation_requested',
+            title: 'Yeni Katılım İsteği',
+            message: `${req.user.name} etkinliğe katılmak istiyor.`,
+            relatedActivity: activity._id
+        });
+
+        const populatedActivity = await Activity.findById(activity._id)
+            .populate('participantStudents.student', 'name email grade');
+
+        res.status(201).json({
+            message: 'Katılım isteği gönderildi',
+            activity: populatedActivity
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Katılım isteği gönderilirken hata oluştu', error: error.message });
+    }
+};
+
+// Katılımı onayla/reddet (öğretmen/admin)
+exports.approveParticipation = async (req, res) => {
+    try {
+        const { status, rejectionReason } = req.body;
+
+        if (!['approved', 'rejected'].includes(status)) {
+            return res.status(400).json({ message: 'Geçersiz durum değeri' });
+        }
+
+        const activity = await Activity.findById(req.params.id);
+        if (!activity) {
+            return res.status(404).json({ message: 'Faaliyet bulunamadı' });
+        }
+
+        // Katılımcıyı bul
+        const participantIndex = activity.participantStudents.findIndex(
+            p => p.student.toString() === req.params.studentId
+        );
+        if (participantIndex === -1) {
+            return res.status(404).json({ message: 'Katılımcı bulunamadı' });
+        }
+
+        const participant = activity.participantStudents[participantIndex];
+        participant.participationStatus = status;
+        participant.approvedBy = req.user._id;
+        participant.approvedAt = new Date();
+        if (status === 'rejected') {
+            participant.rejectionReason = rejectionReason || '';
+        }
+
+        await activity.save();
+
+        // Notification gönder (öğrenciye)
+        const { createNotification } = require('./notificationController');
+        const student = await User.findById(req.params.studentId);
+
+        if (status === 'approved') {
+            await createNotification({
+                user: req.params.studentId,
+                type: 'participation_approved',
+                title: 'Katılım Onaylandı ✅',
+                message: `Etkinliğe katılım talebiniz onaylandı.`,
+                relatedActivity: activity._id
+            });
+        } else {
+            await createNotification({
+                user: req.params.studentId,
+                type: 'participation_rejected',
+                title: 'Katılım Reddedildi ❌',
+                message: `Etkinliğe katılım talebiniz reddedildi.${rejectionReason ? ' Neden: ' + rejectionReason : ''}`,
+                relatedActivity: activity._id
+            });
+        }
+
+        const updatedActivity = await Activity.findById(activity._id)
+            .populate('participantStudents.student', 'name email grade')
+            .populate('createdBy', 'name email role');
+
+        res.json(updatedActivity);
+    } catch (error) {
+        res.status(500).json({ message: 'Katılım işlemi sırasında hata oluştu', error: error.message });
     }
 };

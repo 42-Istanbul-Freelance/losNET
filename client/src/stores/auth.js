@@ -9,6 +9,7 @@ export const useAuthStore = defineStore('auth', {
         firebaseUser: null,
         user: null,
         role: null,
+        registrationStatus: null,
         isAuthenticated: false,
         loading: true,
         error: null
@@ -18,6 +19,7 @@ export const useAuthStore = defineStore('auth', {
         isStudent: (state) => state.role === 'student',
         isTeacher: (state) => state.role === 'teacher',
         isAdmin: (state) => state.role === 'admin',
+        isRegistrationApproved: (state) => state.registrationStatus === 'approved',
         userName: (state) => state.user?.name || '',
         userSchool: (state) => state.user?.school?.name || ''
     },
@@ -135,6 +137,7 @@ export const useAuthStore = defineStore('auth', {
                 this.firebaseUser = null
                 this.user = null
                 this.role = null
+                this.registrationStatus = null
                 this.isAuthenticated = false
             } catch (error) {
                 console.error('Çıkış hatası:', error)
@@ -147,11 +150,13 @@ export const useAuthStore = defineStore('auth', {
                 const response = await api.get('/auth/me');
                 this.user = response.data;
                 this.role = response.data.role;
+                this.registrationStatus = response.data.registrationStatus || 'approved';
                 return response.data;
             } catch (error) {
                 if (error.response?.data?.needsRegistration) {
                     this.user = null;
                     this.role = null;
+                    this.registrationStatus = null;
                 }
                 throw error;
             }

@@ -37,7 +37,8 @@ exports.register = async (req, res) => {
             city,
             district,
             grade,
-            coordinatorTeacher
+            coordinatorTeacher,
+            registrationStatus: role === 'student' ? 'pending' : 'approved'
         });
 
         const populatedUser = await User.findById(user._id).populate('school');
@@ -84,5 +85,77 @@ exports.updateProfile = async (req, res) => {
         res.json(user);
     } catch (error) {
         res.status(500).json({ message: 'Profil güncellenirken hata oluştu', error: error.message });
+    }
+};
+
+// Onay bekleyen öğrencileri listele (öğretmen/admin)
+exports.getPendingRegistrations = async (req, res) => {
+    try {
+        const pendingStudents = await User.find({
+            role: 'student',
+            registrationStatus: 'pending'
+        }).populate('school', 'name city');
+
+        res.json(pendingStudents);
+    } catch (error) {
+        res.status(500).json({ message: 'Onay bekleyen kayıtlar alınırken hata oluştu', error: error.message });
+    }
+};
+
+// Öğrenci kaydını onayla (öğretmen/admin)
+exports.approveStudent = async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        const student = await User.findById(userId);
+        if (!student) {
+            return res.status(404).json({ message: 'Öğrenci bulunamadı' });
+        }
+
+        if (student.registrationStatus !== 'pending') {
+            return res.status(400).json({ message: 'Bu kaydın durumu zaten işlenmişti' });
+        }
+
+        student.registrationStatus = 'approved';
+        student.approvedBy = req.user._id;
+        student.approvedAt = new Date();
+        await student.save();
+
+        res.json({
+            message: 'Öğrenci kaydı onaylandı',
+            student: student
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Öğrenci onaylanırken hata oluştu', error: error.message });
+    }
+};
+
+// Öğrenci kaydını reddet (öğretmen/admin)
+exports.rejectStudent = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { rejectionReason } = req.body;
+
+        const student = await User.findById(userId);
+        if (!student) {
+            return res.status(404).json({ message: 'Öğrenci bulunamadı' });
+        }
+
+        if (student.registrationStatus !== 'pending') {
+            return res.status(400).json({ message: 'Bu kaydın durumu zaten işlenmişti' });
+        }
+
+        student.registrationStatus = 'rejected';
+        student.approvedBy = req.user._id;
+        student.approvedAt = new Date();
+        student.rejectionReason = rejectionReason || '';
+        await student.save();
+
+        res.json({
+            message: 'Öğrenci kaydı reddedildi',
+            student: student
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Öğrenci reddedilirken hata oluştu', error: error.message });
     }
 };

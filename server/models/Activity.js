@@ -4,8 +4,8 @@ const activitySchema = new mongoose.Schema({
     student: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: true,
-        index: true
+        index: true,
+        sparse: true
     },
     school: {
         type: mongoose.Schema.Types.ObjectId,
@@ -69,7 +69,43 @@ const activitySchema = new mongoose.Schema({
     },
     reviewedAt: {
         type: Date
-    }
+    },
+    createdBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+        index: true
+    },
+    creatorRole: {
+        type: String,
+        enum: ['student', 'teacher', 'admin'],
+        required: true
+    },
+    participantStudents: [{
+        student: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        participationStatus: {
+            type: String,
+            enum: ['pending', 'approved', 'rejected'],
+            default: 'pending'
+        },
+        requestedAt: {
+            type: Date,
+            default: Date.now
+        },
+        approvedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        approvedAt: {
+            type: Date
+        },
+        rejectionReason: {
+            type: String
+        }
+    }]
 }, {
     timestamps: true
 });
@@ -77,5 +113,7 @@ const activitySchema = new mongoose.Schema({
 // Bileşik index: öğrenci + durum sorguları için
 activitySchema.index({ student: 1, status: 1 });
 activitySchema.index({ school: 1, status: 1 });
+activitySchema.index({ createdBy: 1, creatorRole: 1 });
+activitySchema.index({ 'participantStudents.student': 1, 'participantStudents.participationStatus': 1 });
 
 module.exports = mongoose.model('Activity', activitySchema);

@@ -18,10 +18,13 @@ const StudentProfile = () => import('../views/student/StudentProfile.vue')
 const CertificateView = () => import('../views/student/CertificateView.vue')
 
 const TeacherDashboard = () => import('../views/teacher/TeacherDashboard.vue')
+const TeacherActivityForm = () => import('../views/teacher/TeacherActivityForm.vue')
 const PendingActivities = () => import('../views/teacher/PendingActivities.vue')
+const StudentRegistrations = () => import('../views/teacher/StudentRegistrations.vue')
 const SchoolReport = () => import('../views/teacher/SchoolReport.vue')
 
 const AdminDashboard = () => import('../views/admin/AdminDashboard.vue')
+const AdminActivityForm = () => import('../views/admin/AdminActivityForm.vue')
 
 const routes = [
   {
@@ -103,9 +106,27 @@ const routes = [
     meta: { requiresAuth: true, role: 'teacher' }
   },
   {
+    path: '/teacher/activities/new',
+    name: 'TeacherActivityForm',
+    component: TeacherActivityForm,
+    meta: { requiresAuth: true, role: 'teacher' }
+  },
+  {
+    path: '/teacher/activities/:id/edit',
+    name: 'TeacherActivityEdit',
+    component: TeacherActivityForm,
+    meta: { requiresAuth: true, role: 'teacher' }
+  },
+  {
     path: '/teacher/pending',
     name: 'PendingActivities',
     component: PendingActivities,
+    meta: { requiresAuth: true, role: 'teacher' }
+  },
+  {
+    path: '/teacher/registrations',
+    name: 'StudentRegistrations',
+    component: StudentRegistrations,
     meta: { requiresAuth: true, role: 'teacher' }
   },
   {
@@ -119,6 +140,18 @@ const routes = [
     path: '/admin/dashboard',
     name: 'AdminDashboard',
     component: AdminDashboard,
+    meta: { requiresAuth: true, role: 'admin' }
+  },
+  {
+    path: '/admin/activities/new',
+    name: 'AdminActivityForm',
+    component: AdminActivityForm,
+    meta: { requiresAuth: true, role: 'admin' }
+  },
+  {
+    path: '/admin/activities/:id/edit',
+    name: 'AdminActivityEdit',
+    component: AdminActivityForm,
     meta: { requiresAuth: true, role: 'admin' }
   },
   {
@@ -160,6 +193,21 @@ router.beforeEach(async (to, from, next) => {
       admin: '/admin/dashboard'
     }
     next(dashboardMap[authStore.role] || '/login')
+  } else if (authStore.isAuthenticated && authStore.role === 'student' && authStore.registrationStatus !== 'approved') {
+    // Onaylanmamış öğrenciler sadece dashboard ve profile sayfalarına erişebilir
+    const approvedPages = [
+      'StudentDashboard',
+      'StudentProfile',
+      'CertificateView',
+      'ActivityList',
+      'Home',
+      'Consent'
+    ]
+    if (!approvedPages.includes(to.name)) {
+      next('/student/dashboard')
+    } else {
+      next()
+    }
   } else {
     next()
   }

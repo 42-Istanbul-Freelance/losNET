@@ -59,4 +59,23 @@ const requireRole = (...roles) => {
     };
 };
 
-module.exports = { authenticate, requireRole };
+/**
+ * Onaylı Kayıt Kontrolü
+ * Öğrencilerin onay almış olması gerektiğini kontrol eder
+ */
+const requireApprovedRegistration = (req, res, next) => {
+    if (!req.user) {
+        return res.status(401).json({ message: 'Kullanıcı profili bulunamadı' });
+    }
+
+    // Sadece öğrendiler için checked
+    if (req.user.role === 'student' && req.user.registrationStatus !== 'approved') {
+        return res.status(403).json({
+            message: 'Kaydınız henüz onaylanmamştır. Lütfen öğretmeninizin onayını bekleyiniz.'
+        });
+    }
+
+    next();
+};
+
+module.exports = { authenticate, requireRole, requireApprovedRegistration };

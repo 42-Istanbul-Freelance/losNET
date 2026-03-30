@@ -15,7 +15,12 @@ const notificationSchema = new mongoose.Schema({
             'activity_revision',
             'badge_earned',
             'certificate_granted',
-            'streak_milestone'
+            'streak_milestone',
+            'registration_approved',
+            'registration_rejected',
+            'participation_requested',
+            'participation_approved',
+            'participation_rejected'
         ],
         required: true
     },

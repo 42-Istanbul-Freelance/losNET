@@ -54,7 +54,8 @@ async function seedDemo() {
             school: school._id,
             city: 'Ankara',
             district: 'Gölbaşı',
-            phone: '05551234567'
+            phone: '05551234567',
+            registrationStatus: 'approved'
         });
         console.log('Öğretmen oluşturuldu:', teacher.email);
 
@@ -71,6 +72,9 @@ async function seedDemo() {
             phone: '05321234567',
             parentConsent: true,
             parentConsentAt: new Date(),
+            registrationStatus: 'approved',
+            approvedBy: teacher._id,
+            approvedAt: new Date(),
             totalHours: 120,
             badgeLevel: 'gold'
         });
@@ -79,6 +83,8 @@ async function seedDemo() {
         // 5. Faaliyetler Oluştur
         const activities = [
             {
+                createdBy: student._id,
+                creatorRole: 'student',
                 student: student._id,
                 school: school._id,
                 date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 gün önce
@@ -92,6 +98,8 @@ async function seedDemo() {
                 reviewedAt: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000)
             },
             {
+                createdBy: student._id,
+                creatorRole: 'student',
                 student: student._id,
                 school: school._id,
                 date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000), // 15 gün önce
@@ -105,6 +113,8 @@ async function seedDemo() {
                 reviewedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000)
             },
             {
+                createdBy: student._id,
+                creatorRole: 'student',
                 student: student._id,
                 school: school._id,
                 date: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000), // 8 gün önce
@@ -118,6 +128,8 @@ async function seedDemo() {
                 reviewedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
             },
             {
+                createdBy: student._id,
+                creatorRole: 'student',
                 student: student._id,
                 school: school._id,
                 date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 gün önce
@@ -131,6 +143,8 @@ async function seedDemo() {
                 reviewedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
             },
             {
+                createdBy: student._id,
+                creatorRole: 'student',
                 student: student._id,
                 school: school._id,
                 date: new Date(), // Bugün
@@ -142,6 +156,8 @@ async function seedDemo() {
                 status: 'pending'
             },
             {
+                createdBy: student._id,
+                creatorRole: 'student',
                 student: student._id,
                 school: school._id,
                 date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),

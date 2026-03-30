@@ -78,6 +78,25 @@ const userSchema = new mongoose.Schema({
     },
     parentConsentTokenExpires: {
         type: Date
+    },
+    registrationStatus: {
+        type: String,
+        enum: ['pending', 'approved', 'rejected'],
+        default: 'pending',
+        required: true
+    },
+    approvedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        sparse: true
+    },
+    approvedAt: {
+        type: Date,
+        sparse: true
+    },
+    rejectionReason: {
+        type: String,
+        sparse: true
     }
 }, {
     timestamps: true
