@@ -1,8 +1,8 @@
 <template>
   <div>
     <div class="page-header">
-      <h1 class="page-title">Faaliyetlerim</h1>
-      <p class="page-subtitle">Tüm gönüllülük faaliyetlerinizi buradan görüntüleyebilirsiniz.</p>
+      <h1 class="page-title">Etkinliklerim</h1>
+      <p class="page-subtitle">Okulunuzdaki etkinlikleri görüntüleyin ve katılım isteği gönderin.</p>
     </div>
 
     <div class="filters">
@@ -12,7 +12,6 @@
           <option value="pending">Bekliyor</option>
           <option value="approved">Onaylandı</option>
           <option value="rejected">Reddedildi</option>
-          <option value="revision_requested">Düzenleme İstendi</option>
         </select>
         <select v-model="typeFilter" class="form-select filter-select" @change="loadActivities">
           <option value="">Tüm Türler</option>
@@ -26,13 +25,12 @@
           <option value="diger">Diğer</option>
         </select>
       </div>
-      <router-link to="/student/activities/new" class="btn btn-primary">+ Yeni Faaliyet</router-link>
     </div>
 
     <div class="card">
       <div v-if="loading" class="loading">Yükleniyor...</div>
       <div v-else-if="activities.length === 0" class="empty-state">
-        <p>Henüz faaliyet kaydı bulunmuyor.</p>
+        <p>Henüz etkinlik bulunmuyor.</p>
       </div>
       <div v-else class="table-container">
         <table>
@@ -42,8 +40,7 @@
               <th>Tür</th>
               <th>Saat</th>
               <th>Açıklama</th>
-              <th>Durum</th>
-              <th>Not</th>
+              <th>Katılım</th>
               <th>İşlem</th>
             </tr>
           </thead>
@@ -53,16 +50,20 @@
               <td>{{ getTypeLabel(a.type) }}</td>
               <td><strong>{{ a.hours }}</strong></td>
               <td>{{ a.description || '—' }}</td>
-              <td><span class="status-badge" :class="'status-' + a.status">{{ getStatusLabel(a.status) }}</span></td>
-              <td>{{ a.reviewNote || '—' }}</td>
               <td>
-                <router-link
-                  v-if="canEdit(a.status)"
-                  :to="`/student/activities/${a._id}/edit`"
-                  class="btn btn-outline btn-sm"
+                <span class="status-badge" :class="'status-' + getMyStatus(a)">
+                  {{ getStatusLabel(getMyStatus(a)) }}
+                </span>
+              </td>
+              <td>
+                <button
+                  v-if="canRequest(a)"
+                  class="btn btn-primary btn-sm"
+                  :disabled="requestingId === a._id"
+                  @click="requestParticipation(a._id)"
                 >
-                  ✏️ Düzenle
-                </router-link>
+                  {{ requestingId === a._id ? 'Gönderiliyor...' : 'Katılım İste' }}
+                </button>
                 <span v-else class="no-action">—</span>
               </td>
             </tr>
@@ -82,15 +83,18 @@
 <script>
 import { ref, reactive, onMounted } from 'vue'
 import api from '../../services/api'
+import { useAuthStore } from '../../stores/auth'
 
 export default {
   name: 'ActivityList',
   setup() {
+    const authStore = useAuthStore()
     const activities = ref([])
     const loading = ref(true)
     const statusFilter = ref('')
     const typeFilter = ref('')
     const pagination = reactive({ page: 1, pages: 1, total: 0 })
+    const requestingId = ref('')
 
     const loadActivities = async () => {
       loading.value = true
@@ -105,14 +109,34 @@ export default {
       finally { loading.value = false }
     }
 
-    const canEdit = (status) => ['revision_requested', 'rejected'].includes(status)
+    const getMyStatus = (activity) => {
+      const me = authStore.user?._id
+      if (!me) return 'none'
+      const entry = (activity.participantStudents || []).find(p => (p.student?._id || p.student) === me)
+      return entry?.participationStatus || 'none'
+    }
+
+    const canRequest = (activity) => getMyStatus(activity) === 'none'
+
+    const requestParticipation = async (id) => {
+      requestingId.value = id
+      try {
+        await api.post(`/activities/${id}/participation-request`)
+        await loadActivities()
+      } catch (err) {
+        console.error(err)
+      } finally {
+        requestingId.value = ''
+      }
+    }
+
     const changePage = (dir) => { pagination.page += dir; loadActivities() }
     const formatDate = (d) => new Date(d).toLocaleDateString('tr-TR')
     const getTypeLabel = (t) => ({ seminer:'Seminer', stant:'Stant', bagis:'Bağış', kermes:'Kermes', bilinclenme:'Bilinçlendirme', sosyal_medya:'Sosyal Medya', farkindalik:'Farkındalık', diger:'Diğer' })[t] || t
-    const getStatusLabel = (s) => ({ pending:'Bekliyor', approved:'Onaylandı', rejected:'Reddedildi', revision_requested:'Düzenleme' })[s] || s
+    const getStatusLabel = (s) => ({ none:'—', pending:'Bekliyor', approved:'Onaylandı', rejected:'Reddedildi' })[s] || s
 
     onMounted(loadActivities)
-    return { activities, loading, statusFilter, typeFilter, pagination, loadActivities, changePage, canEdit, formatDate, getTypeLabel, getStatusLabel }
+    return { authStore, activities, loading, statusFilter, typeFilter, pagination, requestingId, loadActivities, changePage, getMyStatus, canRequest, requestParticipation, formatDate, getTypeLabel, getStatusLabel }
   }
 }
 </script>

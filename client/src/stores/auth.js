@@ -58,7 +58,13 @@ export const useAuthStore = defineStore('auth', {
                     if (token) {
                         this.firebaseUser = { uid: token, email: `${token}@demo.local` }
                         this.isAuthenticated = true
-                        this.fetchProfile().catch(() => this.logout())
+                        this.fetchProfile()
+                            .catch(() => this.logout())
+                            .finally(() => {
+                                this.loading = false
+                                resolve()
+                            })
+                        return
                     }
                     this.loading = false
                     resolve()

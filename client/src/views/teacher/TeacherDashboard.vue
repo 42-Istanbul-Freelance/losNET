@@ -93,7 +93,7 @@ export default {
         stats.value = {
           totalStudents: report.totalStudents || 0,
           totalHours: report.totalHours || 0,
-          pendingCount: (pendingRes.data || []).length,
+          pendingCount: (pendingRes.data || []).reduce((sum, a) => sum + (a.participantStudents || []).filter(p => p.participationStatus === 'pending').length, 0),
           approvedCount: activitiesRes.data.pagination?.total || 0
         }
 

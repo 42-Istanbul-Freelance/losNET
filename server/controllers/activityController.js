@@ -5,15 +5,73 @@ const Certificate = require('../models/Certificate');
 const { updateSchoolBadgeAfterActivity } = require('../services/schoolBadgeService');
 const { createNotification } = require('./notificationController');
 
-// Yeni faaliyet oluştur (öğretmen/admin)
+async function recalcStudentTotals(studentId) {
+    const result = await Activity.aggregate([
+        { $match: { 'participantStudents.student': studentId } },
+        { $unwind: '$participantStudents' },
+        { $match: { 'participantStudents.student': studentId, 'participantStudents.participationStatus': 'approved' } },
+        { $group: { _id: null, totalHours: { $sum: '$hours' } } }
+    ]);
+    const totalHours = result.length > 0 ? result[0].totalHours : 0;
+
+    const student = await User.findById(studentId).populate('school');
+    if (!student) return null;
+
+    const oldBadge = student.badgeLevel;
+    student.totalHours = totalHours;
+    const newBadge = student.calculateBadge();
+    student.badgeLevel = newBadge;
+    await student.save();
+
+    if (newBadge !== oldBadge && newBadge !== 'none') {
+        const badgeLabels = { bronze: 'Bronz İnci 🥉', silver: 'Gümüş İnci 🥈', gold: 'Altın İnci 🥇', platinum: 'Platin İnci Lideri 💎' };
+        try {
+            await Certificate.create({
+                student: student._id,
+                level: newBadge,
+                totalHoursAtGrant: student.totalHours
+            });
+        } catch (certError) {
+            if (certError.code !== 11000) {
+                console.error('Sertifika oluşturma hatası:', certError);
+            }
+        }
+
+        await createNotification({
+            user: student._id,
+            type: 'badge_earned',
+            title: 'Yeni Rozet Kazandınız! 🏅',
+            message: `Tebrikler! ${badgeLabels[newBadge]} rozetini kazandınız! (${student.totalHours} saat)`
+        });
+    }
+
+    return student;
+}
+
+async function recalcSchoolTotals(schoolId) {
+    if (!schoolId) return;
+    const result = await Activity.aggregate([
+        { $match: { school: schoolId } },
+        { $unwind: '$participantStudents' },
+        { $match: { 'participantStudents.participationStatus': 'approved' } },
+        { $group: { _id: null, totalHours: { $sum: '$hours' } } }
+    ]);
+    const totalHours = result.length > 0 ? result[0].totalHours : 0;
+    await School.findByIdAndUpdate(schoolId, { totalHours });
+    await updateSchoolBadgeAfterActivity(schoolId);
+}
+
+// Yeni etkinlik oluştur (öğretmen/admin)
 exports.createActivity = async (req, res) => {
     try {
-        const { date, type, hours, description, location, participantCount, photos, documents, participantStudents } = req.body;
+        const { date, type, hours, description, location, participantCount, photos, documents, participantStudents, school: schoolFromBody } = req.body;
 
         // Teacher/admin faaliyeti kendi okulundan/tüm okullardan öğrencilerle oluşturabilir
         let school = null;
         if (req.user.role === 'teacher') {
             school = req.user.school;
+        } else if (req.user.role === 'admin' && schoolFromBody) {
+            school = schoolFromBody;
         }
 
         // Katılımcı öğrencileri işle
@@ -24,6 +82,12 @@ exports.createActivity = async (req, res) => {
                 participationStatus: 'pending',
                 requestedAt: new Date()
             }));
+        }
+
+        // Admin okul göndermediyse, ilk katılımcıdan okul çıkar (varsa)
+        if (req.user.role === 'admin' && !school && participants.length > 0) {
+            const firstStudent = await User.findById(participants[0].student).select('school');
+            if (firstStudent?.school) school = firstStudent.school;
         }
 
         const activity = await Activity.create({
@@ -39,7 +103,8 @@ exports.createActivity = async (req, res) => {
             participantCount,
             photos: photos || [],
             documents: documents || [],
-            participantStudents: participants
+            participantStudents: participants,
+            status: 'approved' // etkinlikler yayınlanmış kabul edilir; saat/akış katılım onayıyla belirlenir
         });
 
         const populatedActivity = await Activity.findById(activity._id)
@@ -53,64 +118,30 @@ exports.createActivity = async (req, res) => {
     }
 };
 
-// Faaliyet güncelle (öğrenci - revision_requested veya rejected durumundakiler)
-exports.updateActivity = async (req, res) => {
-    try {
-        const activity = await Activity.findById(req.params.id);
-        if (!activity) {
-            return res.status(404).json({ message: 'Faaliyet bulunamadı' });
-        }
-
-        // Sadece kendi faaliyetini düzenleyebilir (student tarafından oluşturulan faaliyetler)
-        if (activity.createdBy.toString() !== req.user._id.toString() || activity.creatorRole !== 'student') {
-            return res.status(403).json({ message: 'Bu faaliyeti düzenleme yetkiniz yok' });
-        }
-
-        // Sadece revision_requested veya rejected durumundaki faaliyetler düzenlenebilir
-        if (!['revision_requested', 'rejected'].includes(activity.status)) {
-            return res.status(400).json({ message: 'Bu faaliyet düzenlenemez, sadece düzenleme istenen veya reddedilen faaliyetler güncellenebilir' });
-        }
-
-        const { date, type, hours, description, location, participantCount, photos, documents } = req.body;
-
-        activity.date = date || activity.date;
-        activity.type = type || activity.type;
-        activity.hours = hours || activity.hours;
-        activity.description = description !== undefined ? description : activity.description;
-        activity.location = location !== undefined ? location : activity.location;
-        activity.participantCount = participantCount !== undefined ? participantCount : activity.participantCount;
-        activity.photos = photos || activity.photos;
-        activity.documents = documents || activity.documents;
-        activity.status = 'pending'; // Tekrar onaya gönder
-        activity.reviewNote = '';
-        activity.reviewedBy = null;
-        activity.reviewedAt = null;
-
-        await activity.save();
-
-        const updated = await Activity.findById(activity._id)
-            .populate('createdBy', 'name email role')
-            .populate('student', 'name email grade')
-            .populate('school', 'name city');
-
-        res.json(updated);
-    } catch (error) {
-        res.status(500).json({ message: 'Faaliyet güncellenirken hata oluştu', error: error.message });
-    }
-};
-
 // Kullanıcının faaliyetlerini listele
 exports.getActivities = async (req, res) => {
     try {
         const { status, type, startDate, endDate, search, page = 1, limit = 20 } = req.query;
         const query = {};
 
-        // Öğrenci kendi faaliyetlerini ve katılabilecekleri faaliyetleri görür
+        // Öğrenci: etkinlikleri görür (okulunun etkinlikleri + kendisinin katıldığı/istek attığı)
         if (req.user.role === 'student') {
+            query.creatorRole = { $in: ['teacher', 'admin'] };
+            query.status = 'approved';
             query.$or = [
-                { createdBy: req.user._id, creatorRole: 'student' }, // Kendi oluşturduğu faaliyetler
-                { 'participantStudents.student': req.user._id } // Katılmak için davet edilen faaliyetler
+                { school: req.user.school },
+                { 'participantStudents.student': req.user._id }
             ];
+
+            // status filtresi öğrencide "katılım durumu" anlamına gelir
+            if (status) {
+                query.participantStudents = {
+                    $elemMatch: {
+                        student: req.user._id,
+                        participationStatus: status
+                    }
+                };
+            }
         }
         // Öğretmen okulundaki tüm faaliyetleri ve kendi oluşturduğu faaliyetleri görür
         else if (req.user.role === 'teacher') {
@@ -121,7 +152,8 @@ exports.getActivities = async (req, res) => {
         }
         // Admin hepsini görür
 
-        if (status) {
+        // teacher/admin için status filtrelemesi event-level kalır (legacy için)
+        if (status && req.user.role !== 'student') {
             query.status = status;
         }
 
@@ -191,134 +223,12 @@ exports.getActivityById = async (req, res) => {
     }
 };
 
-// Faaliyet onay/red/düzenleme talebi (öğretmen)
-exports.reviewActivity = async (req, res) => {
-    try {
-        const { status, reviewNote } = req.body;
-
-        if (!['approved', 'rejected', 'revision_requested'].includes(status)) {
-            return res.status(400).json({ message: 'Geçersiz durum değeri' });
-        }
-
-        const activity = await Activity.findById(req.params.id);
-        if (!activity) {
-            return res.status(404).json({ message: 'Faaliyet bulunamadı' });
-        }
-
-        activity.status = status;
-        activity.reviewNote = reviewNote || '';
-        activity.reviewedBy = req.user._id;
-        activity.reviewedAt = new Date();
-        await activity.save();
-
-        // Bildirim oluştur
-        const typeLabels = {
-            seminer: 'Seminer', stant: 'Stant', bagis: 'Bağış', kermes: 'Kermes',
-            bilinclenme: 'Bilinçlendirme', sosyal_medya: 'Sosyal Medya',
-            farkindalik: 'Farkındalık', diger: 'Diğer'
-        };
-        const activityLabel = typeLabels[activity.type] || activity.type;
-
-        if (status === 'approved') {
-            await createNotification({
-                user: activity.student,
-                type: 'activity_approved',
-                title: 'Faaliyet Onaylandı ✅',
-                message: `${activityLabel} faaliyetiniz (${activity.hours} saat) onaylandı.`,
-                relatedActivity: activity._id
-            });
-        } else if (status === 'rejected') {
-            await createNotification({
-                user: activity.student,
-                type: 'activity_rejected',
-                title: 'Faaliyet Reddedildi ❌',
-                message: `${activityLabel} faaliyetiniz reddedildi.${reviewNote ? ' Not: ' + reviewNote : ''}`,
-                relatedActivity: activity._id
-            });
-        } else if (status === 'revision_requested') {
-            await createNotification({
-                user: activity.student,
-                type: 'activity_revision',
-                title: 'Düzenleme İstendi ✏️',
-                message: `${activityLabel} faaliyetiniz için düzenleme istendi.${reviewNote ? ' Not: ' + reviewNote : ''}`,
-                relatedActivity: activity._id
-            });
-        }
-
-        // Eğer onaylandıysa, öğrencinin toplam saatini güncelle
-        if (status === 'approved') {
-            const student = await User.findById(activity.student);
-            if (student) {
-                // Onaylanan tüm faaliyetlerin toplam saatini hesapla
-                const result = await Activity.aggregate([
-                    { $match: { student: student._id, status: 'approved' } },
-                    { $group: { _id: null, totalHours: { $sum: '$hours' } } }
-                ]);
-
-                student.totalHours = result.length > 0 ? result[0].totalHours : 0;
-
-                // Rozet kontrolü
-                const newBadge = student.calculateBadge();
-                const oldBadge = student.badgeLevel;
-                student.badgeLevel = newBadge;
-                await student.save();
-
-                // Yeni rozet kazanıldıysa sertifika oluştur ve bildirim gönder
-                if (newBadge !== oldBadge && newBadge !== 'none') {
-                    const badgeLabels = { bronze: 'Bronz İnci 🥉', silver: 'Gümüş İnci 🥈', gold: 'Altın İnci 🥇', platinum: 'Platin İnci Lideri 💎' };
-                    try {
-                        await Certificate.create({
-                            student: student._id,
-                            level: newBadge,
-                            totalHoursAtGrant: student.totalHours
-                        });
-                    } catch (certError) {
-                        // Zaten bu seviye sertifika varsa hata vermez
-                        if (certError.code !== 11000) {
-                            console.error('Sertifika oluşturma hatası:', certError);
-                        }
-                    }
-
-                    await createNotification({
-                        user: student._id,
-                        type: 'badge_earned',
-                        title: 'Yeni Rozet Kazandınız! 🏅',
-                        message: `Tebrikler! ${badgeLabels[newBadge]} rozetini kazandınız! (${student.totalHours} saat)`,
-                        relatedActivity: activity._id
-                    });
-                }
-
-                // Okul toplam saatini güncelle ve rozet hesapla
-                if (student.school) {
-                    const schoolResult = await Activity.aggregate([
-                        { $match: { school: student.school, status: 'approved' } },
-                        { $group: { _id: null, totalHours: { $sum: '$hours' } } }
-                    ]);
-                    await School.findByIdAndUpdate(student.school, {
-                        totalHours: schoolResult.length > 0 ? schoolResult[0].totalHours : 0
-                    });
-                    await updateSchoolBadgeAfterActivity(student.school);
-                }
-            }
-        }
-
-        const updatedActivity = await Activity.findById(activity._id)
-            .populate('student', 'name email grade')
-            .populate('school', 'name city')
-            .populate('reviewedBy', 'name');
-
-        res.json(updatedActivity);
-    } catch (error) {
-        res.status(500).json({ message: 'Faaliyet değerlendirme hatası', error: error.message });
-    }
-};
-
-// Onay bekleyen faaliyetler (öğretmen)
+// Onay bekleyen katılım istekleri (öğretmen/admin)
 exports.getPendingActivities = async (req, res) => {
     try {
-        const query = { status: 'pending' };
+        const query = { 'participantStudents.participationStatus': 'pending' };
 
-        // Öğretmen sadece kendi okulunun faaliyetlerini ve kendi oluşturduklarını görür
+        // Öğretmen sadece kendi okulunun etkinliklerini ve kendi oluşturduklarını görür
         if (req.user.role === 'teacher') {
             query.$or = [
                 { school: req.user.school },
@@ -328,7 +238,6 @@ exports.getPendingActivities = async (req, res) => {
 
         const activities = await Activity.find(query)
             .populate('createdBy', 'name email role')
-            .populate('student', 'name email grade')
             .populate('participantStudents.student', 'name email grade')
             .populate('school', 'name city')
             .sort({ createdAt: -1 });
@@ -423,8 +332,7 @@ exports.approveParticipation = async (req, res) => {
         await activity.save();
 
         // Notification gönder (öğrenciye)
-        const { createNotification } = require('./notificationController');
-        const student = await User.findById(req.params.studentId);
+        const student = await User.findById(req.params.studentId).select('name school');
 
         if (status === 'approved') {
             await createNotification({
@@ -434,6 +342,9 @@ exports.approveParticipation = async (req, res) => {
                 message: `Etkinliğe katılım talebiniz onaylandı.`,
                 relatedActivity: activity._id
             });
+            await recalcStudentTotals(req.params.studentId);
+            const schoolId = activity.school || student?.school;
+            await recalcSchoolTotals(schoolId);
         } else {
             await createNotification({
                 user: req.params.studentId,

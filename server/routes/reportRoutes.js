@@ -1,19 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const { authenticate, requireRole } = require('../middleware/authMiddleware');
+const { authenticate, requireRole, requireApprovedRegistration } = require('../middleware/authMiddleware');
 const reportController = require('../controllers/reportController');
 
 // GET /api/reports/student/:id/hours - Öğrenci saat özeti
-router.get('/student/:id/hours', authenticate, reportController.getStudentHours);
+router.get('/student/:id/hours', authenticate, requireApprovedRegistration, reportController.getStudentHours);
 
 // GET /api/reports/my-hours - Kendi saat özetim
-router.get('/my-hours', authenticate, reportController.getStudentHours);
+router.get('/my-hours', authenticate, requireApprovedRegistration, reportController.getStudentHours);
 
 // GET /api/reports/school/:id - Okul bazlı rapor
-router.get('/school/:id', authenticate, requireRole('teacher', 'admin'), reportController.getSchoolReport);
+router.get('/school/:id', authenticate, requireRole('teacher', 'admin'), requireApprovedRegistration, reportController.getSchoolReport);
 
 // GET /api/reports/my-school - Kendi okulumun raporu
-router.get('/my-school', authenticate, requireRole('teacher'), reportController.getSchoolReport);
+router.get('/my-school', authenticate, requireRole('teacher'), requireApprovedRegistration, reportController.getSchoolReport);
 
 // GET /api/reports/overview - Genel merkez istatistikleri
 router.get('/overview', authenticate, requireRole('admin'), reportController.getOverview);
@@ -31,15 +31,15 @@ router.get('/activity-types', authenticate, requireRole('admin'), reportControll
 router.get('/monthly', authenticate, requireRole('admin'), reportController.getMonthlyStats);
 
 // GET /api/reports/school-ranking - Öğrencinin okul içi sıralaması
-router.get('/school-ranking', authenticate, reportController.getSchoolRanking);
+router.get('/school-ranking', authenticate, requireApprovedRegistration, reportController.getSchoolRanking);
 
 // GET /api/reports/streak - Öğrenci streak bilgisi
-router.get('/streak', authenticate, reportController.getStudentStreak);
+router.get('/streak', authenticate, requireApprovedRegistration, reportController.getStudentStreak);
 
 // GET /api/reports/export/students - Öğrenci listesi CSV export (admin)
 router.get('/export/students', authenticate, requireRole('admin'), reportController.exportStudentsCsv);
 
 // GET /api/reports/calendar - Faaliyet takvimi verisi
-router.get('/calendar', authenticate, reportController.getActivityCalendar);
+router.get('/calendar', authenticate, requireApprovedRegistration, reportController.getActivityCalendar);
 
 module.exports = router;

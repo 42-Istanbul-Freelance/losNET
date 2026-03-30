@@ -3,6 +3,10 @@ const User = require('../models/User');
 const School = require('../models/School');
 const { updateSchoolBadges } = require('../services/schoolBadgeService');
 
+function approvedParticipationMatch() {
+    return { 'participantStudents.participationStatus': 'approved' };
+}
+
 // Öğrenci saat özeti
 exports.getStudentHours = async (req, res) => {
     try {
@@ -10,13 +14,17 @@ exports.getStudentHours = async (req, res) => {
 
         // Toplam saat
         const totalResult = await Activity.aggregate([
-            { $match: { student: studentId, status: 'approved' } },
+            { $match: { 'participantStudents.student': studentId } },
+            { $unwind: '$participantStudents' },
+            { $match: { 'participantStudents.student': studentId, 'participantStudents.participationStatus': 'approved' } },
             { $group: { _id: null, totalHours: { $sum: '$hours' } } }
         ]);
 
         // Aylık saat (son 12 ay)
         const monthlyResult = await Activity.aggregate([
-            { $match: { student: studentId, status: 'approved' } },
+            { $match: { 'participantStudents.student': studentId } },
+            { $unwind: '$participantStudents' },
+            { $match: { 'participantStudents.student': studentId, 'participantStudents.participationStatus': 'approved' } },
             {
                 $group: {
                     _id: {
@@ -33,7 +41,9 @@ exports.getStudentHours = async (req, res) => {
 
         // Yıllık saat
         const yearlyResult = await Activity.aggregate([
-            { $match: { student: studentId, status: 'approved' } },
+            { $match: { 'participantStudents.student': studentId } },
+            { $unwind: '$participantStudents' },
+            { $match: { 'participantStudents.student': studentId, 'participantStudents.participationStatus': 'approved' } },
             {
                 $group: {
                     _id: { year: { $year: '$date' } },
@@ -46,7 +56,9 @@ exports.getStudentHours = async (req, res) => {
 
         // Etkinlik türü dağılımı
         const typeResult = await Activity.aggregate([
-            { $match: { student: studentId, status: 'approved' } },
+            { $match: { 'participantStudents.student': studentId } },
+            { $unwind: '$participantStudents' },
+            { $match: { 'participantStudents.student': studentId, 'participantStudents.participationStatus': 'approved' } },
             {
                 $group: {
                     _id: '$type',
@@ -88,7 +100,9 @@ exports.getSchoolReport = async (req, res) => {
 
         // Aylık trend
         const monthlyTrend = await Activity.aggregate([
-            { $match: { school: schoolId, status: 'approved' } },
+            { $match: { school: schoolId } },
+            { $unwind: '$participantStudents' },
+            { $match: approvedParticipationMatch() },
             {
                 $group: {
                     _id: {
@@ -105,7 +119,9 @@ exports.getSchoolReport = async (req, res) => {
 
         // Etkinlik türü dağılımı
         const typeDistribution = await Activity.aggregate([
-            { $match: { school: schoolId, status: 'approved' } },
+            { $match: { school: schoolId } },
+            { $unwind: '$participantStudents' },
+            { $match: approvedParticipationMatch() },
             {
                 $group: {
                     _id: '$type',
@@ -137,11 +153,17 @@ exports.getOverview = async (req, res) => {
         const totalSchools = await School.countDocuments();
 
         const totalHoursResult = await Activity.aggregate([
-            { $match: { status: 'approved' } },
+            { $unwind: '$participantStudents' },
+            { $match: approvedParticipationMatch() },
             { $group: { _id: null, totalHours: { $sum: '$hours' }, count: { $sum: 1 } } }
         ]);
 
-        const pendingCount = await Activity.countDocuments({ status: 'pending' });
+        const pendingCountResult = await Activity.aggregate([
+            { $unwind: '$participantStudents' },
+            { $match: { 'participantStudents.participationStatus': 'pending' } },
+            { $count: 'count' }
+        ]);
+        const pendingCount = pendingCountResult.length ? pendingCountResult[0].count : 0;
 
         // İl bazlı dağılım
         const cityDistribution = await School.aggregate([
@@ -203,7 +225,8 @@ exports.getTopSchools = async (req, res) => {
 exports.getActivityTypeStats = async (req, res) => {
     try {
         const stats = await Activity.aggregate([
-            { $match: { status: 'approved' } },
+            { $unwind: '$participantStudents' },
+            { $match: approvedParticipationMatch() },
             {
                 $group: {
                     _id: '$type',
@@ -224,7 +247,8 @@ exports.getActivityTypeStats = async (req, res) => {
 exports.getMonthlyStats = async (req, res) => {
     try {
         const stats = await Activity.aggregate([
-            { $match: { status: 'approved' } },
+            { $unwind: '$participantStudents' },
+            { $match: approvedParticipationMatch() },
             {
                 $group: {
                     _id: {
@@ -283,9 +307,13 @@ exports.getStudentStreak = async (req, res) => {
         sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
         const activities = await Activity.find({
-            student: studentId,
-            status: 'approved',
-            date: { $gte: sixMonthsAgo }
+            date: { $gte: sixMonthsAgo },
+            participantStudents: {
+                $elemMatch: {
+                    student: studentId,
+                    participationStatus: 'approved'
+                }
+            }
         }).sort({ date: -1 });
 
         if (activities.length === 0) {
@@ -369,11 +397,12 @@ exports.getActivityCalendar = async (req, res) => {
         const dailyData = await Activity.aggregate([
             {
                 $match: {
-                    student: studentId,
-                    status: 'approved',
+                    'participantStudents.student': studentId,
                     date: { $gte: startDate, $lte: endDate }
                 }
             },
+            { $unwind: '$participantStudents' },
+            { $match: { 'participantStudents.student': studentId, 'participantStudents.participationStatus': 'approved' } },
             {
                 $group: {
                     _id: {

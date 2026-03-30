@@ -12,7 +12,6 @@ import NotFoundView from '../views/NotFoundView.vue'
 
 // Lazy load diğer view'lar
 const StudentDashboard = () => import('../views/student/StudentDashboard.vue')
-const ActivityForm = () => import('../views/student/ActivityForm.vue')
 const ActivityList = () => import('../views/student/ActivityList.vue')
 const StudentProfile = () => import('../views/student/StudentProfile.vue')
 const CertificateView = () => import('../views/student/CertificateView.vue')
@@ -72,18 +71,6 @@ const routes = [
     path: '/student/activities',
     name: 'ActivityList',
     component: ActivityList,
-    meta: { requiresAuth: true, role: 'student' }
-  },
-  {
-    path: '/student/activities/new',
-    name: 'ActivityForm',
-    component: ActivityForm,
-    meta: { requiresAuth: true, role: 'student' }
-  },
-  {
-    path: '/student/activities/:id/edit',
-    name: 'ActivityEdit',
-    component: ActivityForm,
     meta: { requiresAuth: true, role: 'student' }
   },
   {
@@ -173,6 +160,16 @@ router.beforeEach(async (to, from, next) => {
   // Auth state yüklenmesini bekle
   if (authStore.loading) {
     await authStore.initAuth()
+  }
+
+  // Auth var ama profil/rol henüz yüklenmemişse önce tamamla.
+  // Aksi halde guest/role redirect'leri /login üzerinde sonsuz döngüye girebiliyor.
+  if (authStore.isAuthenticated && !authStore.role) {
+    try {
+      await authStore.fetchProfile()
+    } catch {
+      await authStore.logout()
+    }
   }
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {

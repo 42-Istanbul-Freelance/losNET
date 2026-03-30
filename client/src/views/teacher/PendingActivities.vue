@@ -1,8 +1,8 @@
 <template>
   <div>
     <div class="page-header">
-      <h1 class="page-title">Onay Bekleyen Faaliyetler</h1>
-      <p class="page-subtitle">Öğrencilerin girdiği faaliyetleri inceleyin ve onaylayın.</p>
+      <h1 class="page-title">Onay Bekleyen Katılımlar</h1>
+      <p class="page-subtitle">Öğrencilerin etkinlik katılım isteklerini inceleyin ve onaylayın.</p>
     </div>
 
     <div v-if="success" class="alert alert-success">{{ success }}</div>
@@ -29,26 +29,22 @@
     </div>
 
     <div v-if="loading" class="loading">Yükleniyor...</div>
-    <div v-else-if="filteredActivities.length === 0" class="card">
+      <div v-else-if="filteredActivities.length === 0" class="card">
       <div class="empty-state">
-        <p>🎉 {{ allActivities.length === 0 ? 'Onay bekleyen faaliyet bulunmuyor.' : 'Filtreye uygun faaliyet yok.' }}</p>
+        <p>🎉 {{ allActivities.length === 0 ? 'Onay bekleyen katılım bulunmuyor.' : 'Filtreye uygun kayıt yok.' }}</p>
       </div>
     </div>
     <div v-else>
       <div v-for="a in filteredActivities" :key="a._id" class="card activity-review-card">
         <div class="review-header">
           <div>
-            <strong>{{ a.student?.name || 'Öğrenci' }}</strong>
-            <span class="grade-tag">{{ a.student?.grade || '' }}</span>
+            <strong>{{ getTypeLabel(a.type) }}</strong>
+            <span class="grade-tag">{{ formatDate(a.date) }}</span>
           </div>
-          <span class="date">{{ formatDate(a.date) }}</span>
+          <span class="date">{{ a.school?.name || '—' }}</span>
         </div>
 
         <div class="review-body">
-          <div class="info-row">
-            <span class="info-label">Tür:</span>
-            <span>{{ getTypeLabel(a.type) }}</span>
-          </div>
           <div class="info-row">
             <span class="info-label">Saat:</span>
             <span class="hours-value">{{ a.hours }} saat</span>
@@ -72,11 +68,27 @@
         </div>
 
         <div class="review-actions">
-          <input v-model="reviewNotes[a._id]" type="text" class="form-input note-input" placeholder="Not ekleyin (opsiyonel)" />
-          <div class="action-buttons">
-            <button class="btn btn-success" @click="reviewActivity(a._id, 'approved')">✅ Onayla</button>
-            <button class="btn btn-warning" @click="reviewActivity(a._id, 'revision_requested')">✏️ Düzenleme İste</button>
-            <button class="btn btn-danger" @click="reviewActivity(a._id, 'rejected')">❌ Reddet</button>
+          <div class="participants">
+            <div
+              v-for="p in pendingParticipants(a)"
+              :key="p.student?._id || p.student"
+              class="participant-row"
+            >
+              <div class="participant-info">
+                <strong>{{ p.student?.name || 'Öğrenci' }}</strong>
+                <span class="participant-meta">{{ p.student?.grade || '' }}</span>
+              </div>
+              <input
+                v-model="rejectionNotes[`${a._id}:${p.student?._id || p.student}`]"
+                type="text"
+                class="form-input note-input"
+                placeholder="Reddetme nedeni (opsiyonel)"
+              />
+              <div class="action-buttons">
+                <button class="btn btn-success btn-sm" @click="setParticipation(a._id, p.student?._id || p.student, 'approved')">✅ Onayla</button>
+                <button class="btn btn-danger btn-sm" @click="setParticipation(a._id, p.student?._id || p.student, 'rejected')">❌ Reddet</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -94,7 +106,7 @@ export default {
     const allActivities = ref([])
     const loading = ref(true)
     const success = ref('')
-    const reviewNotes = reactive({})
+    const rejectionNotes = reactive({})
     const searchQuery = ref('')
     const typeFilter = ref('')
 
@@ -122,12 +134,15 @@ export default {
       finally { loading.value = false }
     }
 
-    const reviewActivity = async (id, status) => {
+    const pendingParticipants = (activity) => (activity.participantStudents || []).filter(p => p.participationStatus === 'pending')
+
+    const setParticipation = async (activityId, studentId, status) => {
       try {
-        await api.put(`/activities/${id}/review`, { status, reviewNote: reviewNotes[id] || '' })
-        const labels = { approved: 'onaylandı', rejected: 'reddedildi', revision_requested: 'için düzenleme istendi' }
-        success.value = `Faaliyet ${labels[status]}.`
-        allActivities.value = allActivities.value.filter(a => a._id !== id)
+        const key = `${activityId}:${studentId}`
+        const rejectionReason = rejectionNotes[key] || ''
+        await api.put(`/activities/${activityId}/participation/${studentId}`, { status, rejectionReason })
+        success.value = status === 'approved' ? 'Katılım onaylandı.' : 'Katılım reddedildi.'
+        await loadActivities()
         setTimeout(() => { success.value = '' }, 3000)
       } catch (err) { console.error(err) }
     }
@@ -135,7 +150,7 @@ export default {
     const filterActivities = () => { /* computed handles this */ }
 
     onMounted(loadActivities)
-    return { allActivities, filteredActivities, loading, success, reviewNotes, searchQuery, typeFilter, formatDate, getTypeLabel, reviewActivity, filterActivities }
+    return { allActivities, filteredActivities, loading, success, rejectionNotes, searchQuery, typeFilter, formatDate, getTypeLabel, pendingParticipants, setParticipation, filterActivities }
   }
 }
 </script>
@@ -157,7 +172,11 @@ export default {
 .photo-grid { display: flex; gap: 4px; }
 .photo-thumb { text-decoration: none; font-size: 20px; }
 .review-actions { display: flex; gap: 12px; align-items: center; padding-top: 12px; border-top: 1px solid var(--border); }
-.note-input { flex: 1; }
+.participants { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+.participant-row { display: grid; grid-template-columns: 180px 1fr auto; gap: 12px; align-items: center; }
+.participant-meta { margin-left: 8px; font-size: 12px; color: var(--text-secondary); }
+.note-input { width: 100%; }
 .action-buttons { display: flex; gap: 8px; }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
 .empty-state { text-align: center; padding: 40px; color: var(--text-secondary); font-size: 18px; }
 </style>
