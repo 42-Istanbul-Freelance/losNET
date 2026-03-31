@@ -30,4 +30,10 @@ router.put('/:id/participation/:studentId', authenticate, requireRole('teacher',
 // POST /api/activities/:id/respond-invitation - Öğrencinin daveti kabul/reddetmesi
 router.post('/:id/respond-invitation', authenticate, requireRole('student'), requireApprovedRegistration, activityController.respondToInvitation);
 
+// POST /api/activities/:id/verification-code - Kod üretme/yenileme (Öğretmen/Admin)
+router.post('/:id/verification-code', authenticate, requireRole('teacher', 'admin'), requireApprovedRegistration, activityController.generateVerificationCode);
+
+// POST /api/activities/:id/verify-code - Kod ile doğrulama (Öğrenci)
+router.post('/:id/verify-code', authenticate, requireRole('student'), requireApprovedRegistration, activityController.verifyActivityCode);
+
 module.exports = router;

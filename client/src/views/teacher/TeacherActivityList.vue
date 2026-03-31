@@ -107,8 +107,9 @@
               <th>Oluşturan</th>
               <th>Tarih</th>
               <th>Tür</th>
-              <th>Saat</th>
+              <th>Tahmini Saat</th>
               <th>Katılımcı Sayısı</th>
+              <th v-if="activeTab === 'created'">Doğrulama Kodu</th>
               <th>İşlem</th>
             </tr>
           </thead>
@@ -122,6 +123,17 @@
               <td>{{ getTypeLabel(a.type) }}</td>
               <td><strong>{{ a.hours }}</strong></td>
               <td>{{ getApprovedCount(a) }} onaylı</td>
+              <td v-if="activeTab === 'created'">
+                <div v-if="a.verificationCode" class="code-display">
+                  <code class="v-code">{{ a.verificationCode }}</code>
+                  <button class="btn-icon-small" title="Kodu Yenile" @click="generateCode(a._id)">
+                    🔄
+                  </button>
+                </div>
+                <button v-else class="btn btn-outline btn-sm" @click="generateCode(a._id)">
+                  Kod Oluştur
+                </button>
+              </td>
               <td>
                 <div class="action-buttons">
                   <router-link :to="`/teacher/activities/${a._id}/edit`" class="btn btn-outline btn-sm">
@@ -213,6 +225,19 @@ export default {
       else expandedStudents.value.push(id)
     }
 
+    const generateCode = async (id) => {
+      try {
+        const res = await api.post(`/activities/${id}/verification-code`)
+        // Update local activity state
+        const activity = activities.value.find(a => a._id === id)
+        if (activity) {
+          activity.verificationCode = res.data.code
+        }
+      } catch (err) {
+        console.error('Kod oluşturulamadı:', err)
+      }
+    }
+
     const changePage = (delta) => {
       pagination.page += delta
       loadActivities()
@@ -262,7 +287,8 @@ export default {
       formatDate,
       getTypeLabel,
       getApprovedCount,
-      toggleStudentDetails
+      toggleStudentDetails,
+      generateCode
     }
   }
 }
@@ -354,5 +380,36 @@ export default {
 .act-desc {
   color: var(--text-secondary);
   font-style: italic;
+}
+
+.code-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.v-code {
+  background: #eee;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: bold;
+  font-family: monospace;
+  color: var(--primary-dark);
+}
+
+.btn-icon-small {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+}
+
+.btn-icon-small:hover {
+  transform: rotate(45deg);
 }
 </style>

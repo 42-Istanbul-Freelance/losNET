@@ -109,7 +109,11 @@ const activitySchema = new mongoose.Schema({
         rejectionReason: {
             type: String
         }
-    }]
+    }],
+    verificationCode: {
+        type: String,
+        trim: true
+    }
 }, {
     timestamps: true
 });

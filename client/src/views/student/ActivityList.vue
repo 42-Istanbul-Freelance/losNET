@@ -52,9 +52,29 @@
               <td><strong>{{ a.hours }}</strong></td>
               <td>{{ a.description || '—' }}</td>
               <td>
-                <span class="status-badge" :class="'status-' + getMyStatus(a)">
-                  {{ getStatusLabel(getMyStatus(a)) }}
+                <span v-if="getMyStatus(a) === 'approved'" class="status-badge status-approved">
+                  {{ getStatusLabel('approved') }}
                 </span>
+                <div v-else class="verification-box">
+                  <span class="status-badge" :class="'status-' + getMyStatus(a)">
+                    {{ getStatusLabel(getMyStatus(a)) }}
+                  </span>
+                  <div class="verify-input-group">
+                    <input 
+                      v-model="verificationCodes[a._id]" 
+                      placeholder="Kod" 
+                      class="form-control form-control-sm mini-input"
+                      maxlength="6"
+                    >
+                    <button 
+                      class="btn btn-primary btn-sm btn-mini" 
+                      @click="verifyCode(a._id)"
+                      :disabled="!verificationCodes[a._id] || requestingId === a._id"
+                    >
+                      ✓
+                    </button>
+                  </div>
+                </div>
               </td>
               <td>
                 <div v-if="getMyStatus(a) === 'invited'" class="action-buttons">
@@ -100,6 +120,7 @@ export default {
     const typeFilter = ref('')
     const pagination = reactive({ page: 1, pages: 1, total: 0 })
     const requestingId = ref('')
+    const verificationCodes = ref({})
 
     const loadActivities = async () => {
       loading.value = true
@@ -147,13 +168,30 @@ export default {
       }
     }
 
+    const verifyCode = async (id) => {
+      const code = verificationCodes.value[id]
+      if (!code) return
+      
+      requestingId.value = id
+      try {
+        const res = await api.post(`/activities/${id}/verify-code`, { code })
+        alert(res.data.message)
+        await loadActivities()
+        verificationCodes.value[id] = ''
+      } catch (err) {
+        alert(err.response?.data?.message || 'Doğrulama başarısız')
+      } finally {
+        requestingId.value = ''
+      }
+    }
+
     const changePage = (dir) => { pagination.page += dir; loadActivities() }
     const formatDate = (d) => new Date(d).toLocaleDateString('tr-TR')
     const getTypeLabel = (t) => ({ seminer:'Seminer', stant:'Stant', bagis:'Bağış', kermes:'Kermes', bilinclenme:'Bilinçlendirme', sosyal_medya:'Sosyal Medya', farkindalik:'Farkındalık', diger:'Diğer' })[t] || t
     const getStatusLabel = (s) => ({ none:'—', pending:'Bekliyor', invited:'Davet Edildi', approved:'Onaylandı', rejected:'Reddedildi' })[s] || s
 
     onMounted(loadActivities)
-    return { authStore, activities, loading, statusFilter, typeFilter, pagination, requestingId, loadActivities, changePage, getMyStatus, canRequest, requestParticipation, respondInvitation, formatDate, getTypeLabel, getStatusLabel }
+    return { authStore, activities, loading, statusFilter, typeFilter, pagination, requestingId, verificationCodes, loadActivities, changePage, getMyStatus, canRequest, requestParticipation, respondInvitation, verifyCode, formatDate, getTypeLabel, getStatusLabel }
   }
 }
 </script>
@@ -169,4 +207,26 @@ export default {
 .action-buttons { display: flex; gap: 6px; }
 .no-action { color: var(--text-secondary); font-size: 13px; }
 .status-invited { background: var(--warning-light); color: var(--warning); }
+
+.verification-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.verify-input-group {
+  display: flex;
+  gap: 4px;
+}
+
+.mini-input {
+  width: 60px;
+  padding: 4px 8px;
+  font-size: 11px;
+  text-align: center;
+}
+
+.btn-mini {
+  padding: 2px 6px;
+}
 </style>

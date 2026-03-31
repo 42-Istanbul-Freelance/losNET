@@ -513,3 +513,79 @@ exports.getApprovedStudentsInfo = async (req, res) => {
         res.status(500).json({ message: 'Onaylanan öğrenciler getirilirken hata oluştu', error: error.message });
     }
 };
+
+// Doğrulama kodu oluştur/yenile (Öğretmen/Admin)
+exports.generateVerificationCode = async (req, res) => {
+    try {
+        const activity = await Activity.findById(req.params.id);
+        if (!activity) {
+            return res.status(404).json({ message: 'Faaliyet bulunamadı' });
+        }
+
+        // Yetki kontrolü
+        if (req.user.role === 'teacher' && activity.createdBy.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: 'Sadece kendi faaliyetleriniz için kod oluşturabilirsiniz' });
+        }
+
+        // 6 haneli rastgele kod üret
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        activity.verificationCode = code;
+        await activity.save();
+
+        res.json({ message: 'Doğrulama kodu oluşturuldu', code });
+    } catch (error) {
+        res.status(500).json({ message: 'Kod oluşturulurken hata oluştu', error: error.message });
+    }
+};
+
+// Kod ile katılım doğrula (Öğrenci)
+exports.verifyActivityCode = async (req, res) => {
+    try {
+        const { code } = req.body;
+        const activity = await Activity.findById(req.params.id);
+        if (!activity) {
+            return res.status(404).json({ message: 'Faaliyet bulunamadı' });
+        }
+
+        if (!activity.verificationCode) {
+            return res.status(400).json({ message: 'Bu faaliyet için henüz bir doğrulama kodu oluşturulmamış' });
+        }
+
+        if (activity.verificationCode !== code) {
+            return res.status(400).json({ message: 'Hatalı doğrulama kodu' });
+        }
+
+        // Katılımcıyı bul veya ekle
+        let participant = activity.participantStudents.find(
+            p => p.student.toString() === req.user._id.toString()
+        );
+
+        if (!participant) {
+            // Eğer öğrenci listede yoksa ve aktivite gizli değilse ekle
+            if (activity.isPrivate) {
+                return res.status(403).json({ message: 'Bu özel faaliyete sadece davetli öğrenciler katılabilir' });
+            }
+            activity.participantStudents.push({
+                student: req.user._id,
+                participationStatus: 'approved',
+                appliedAt: new Date(),
+                approvedBy: activity.createdBy,
+                approvedAt: new Date()
+            });
+        } else {
+            // Varsa durumunu approved yap
+            participant.participationStatus = 'approved';
+            participant.approvedBy = activity.createdBy;
+            participant.approvedAt = new Date();
+        }
+
+        await activity.save();
+        await recalcStudentTotals(req.user._id);
+        const schoolId = activity.school || req.user.school;
+        await recalcSchoolTotals(schoolId);
+
+        res.json({ message: 'Katılımınız başarıyla doğrulandı ve onaylandı', activity });
+    } catch (error) {
+        res.status(500).json({ message: 'Doğrulama sırasında hata oluştu', error: error.message });
+    }
+};
