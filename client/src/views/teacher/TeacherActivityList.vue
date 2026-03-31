@@ -47,10 +47,60 @@
 
     <div class="card">
       <div v-if="loading" class="loading">Yükleniyor...</div>
-      <div v-else-if="activities.length === 0" class="empty-state">
+      <div v-else-if="activeTab === 'approved' && approvedStudents.length === 0" class="empty-state">
+        <p>Henüz onayladığınız bir öğrenci bulunmuyor.</p>
+      </div>
+      <div v-else-if="activeTab !== 'approved' && activities.length === 0" class="empty-state">
         <p>Henüz etkinlik bulunmuyor.</p>
       </div>
-      <div v-else class="table-container">
+      
+      <!-- Öğrenci Tablosu (Onayladıklarım sekmesi) -->
+      <div v-else-if="activeTab === 'approved' && approvedStudents.length > 0" class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Öğrenci Adı</th>
+              <th>Sınıf</th>
+              <th>Etkinlik Sayısı</th>
+              <th>Toplam Onaylanan Saat</th>
+              <th>Detay</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template v-for="student in approvedStudents" :key="student._id">
+              <tr>
+                <td>{{ student.studentInfo?.name || 'Bilinmiyor' }} <br><small class="text-muted">{{ student.studentInfo?.email }}</small></td>
+                <td>{{ student.studentInfo?.grade || '—' }}</td>
+                <td>{{ student.activityCount }}</td>
+                <td><strong>{{ student.totalHours }}</strong></td>
+                <td>
+                  <button class="btn btn-outline btn-sm" @click="toggleStudentDetails(student._id)">
+                    {{ expandedStudents.includes(student._id) ? 'Gizle' : 'Göster' }}
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="expandedStudents.includes(student._id)" class="expanded-row">
+                <td colspan="5">
+                  <div class="student-activities-detail">
+                    <h4 class="detail-title">Katıldığı Etkinlikler:</h4>
+                    <ul class="detail-list">
+                      <li v-for="act in student.activities" :key="act._id">
+                        <span class="act-type">{{ getTypeLabel(act.type) }}</span> — 
+                        <span class="act-date">{{ formatDate(act.date) }}</span> 
+                        (<strong>{{ act.hours }} saat</strong>)
+                        <span class="act-desc" v-if="act.title"> - {{ act.title }}</span>
+                      </li>
+                    </ul>
+                  </div>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Normal Etkinlik Tablosu -->
+      <div v-else-if="activeTab !== 'approved' && activities.length > 0" class="table-container">
         <table>
           <thead>
             <tr>
@@ -84,7 +134,7 @@
         </table>
       </div>
 
-      <div v-if="pagination.pages > 1" class="pagination">
+      <div v-if="activeTab !== 'approved' && pagination.pages > 1" class="pagination">
         <button class="btn btn-outline" :disabled="pagination.page <= 1" @click="changePage(-1)">←</button>
         <span>{{ pagination.page }} / {{ pagination.pages }}</span>
         <button class="btn btn-outline" :disabled="pagination.page >= pagination.pages" @click="changePage(1)">→</button>
@@ -107,6 +157,9 @@ export default {
     const activeTab = ref('all') // all | created | approved
     const typeFilter = ref('')
     const pagination = reactive({ page: 1, pages: 1, total: 0 })
+    
+    const approvedStudents = ref([])
+    const expandedStudents = ref([])
 
     const loadActivities = async () => {
       loading.value = true
@@ -129,10 +182,35 @@ export default {
       }
     }
 
+    const loadApprovedStudents = async () => {
+      loading.value = true
+      try {
+        const res = await api.get('/activities/teacher/approved-students')
+        approvedStudents.value = res.data
+      } catch (err) {
+        console.error('Öğrenci özeti getirilemedi:', err)
+      } finally {
+        loading.value = false
+      }
+    }
+
     const setTab = (tab) => {
       activeTab.value = tab
-      pagination.page = 1
-      loadActivities()
+      expandedStudents.value = []
+      typeFilter.value = ''
+      
+      if (tab === 'approved') {
+        loadApprovedStudents()
+      } else {
+        pagination.page = 1
+        loadActivities()
+      }
+    }
+
+    const toggleStudentDetails = (id) => {
+      const idx = expandedStudents.value.indexOf(id)
+      if (idx > -1) expandedStudents.value.splice(idx, 1)
+      else expandedStudents.value.push(id)
     }
 
     const changePage = (delta) => {
@@ -176,12 +254,15 @@ export default {
       activeTab,
       typeFilter,
       pagination,
+      approvedStudents,
+      expandedStudents,
       loadActivities,
       setTab,
       changePage,
       formatDate,
       getTypeLabel,
-      getApprovedCount
+      getApprovedCount,
+      toggleStudentDetails
     }
   }
 }
@@ -225,5 +306,53 @@ export default {
   background-color: var(--primary);
   color: white;
   margin-right: 8px;
+}
+
+.text-muted {
+  color: var(--text-secondary);
+}
+
+.expanded-row {
+  background-color: #f8f9fa;
+}
+
+.expanded-row td {
+  padding: 16px;
+  border-bottom: 2px solid var(--border);
+}
+
+.student-activities-detail {
+  padding-left: 12px;
+  border-left: 3px solid var(--primary);
+}
+
+.detail-title {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.detail-list {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13.5px;
+}
+
+.detail-list li {
+  margin-bottom: 4px;
+}
+
+.act-type {
+  font-weight: 500;
+  color: var(--primary-dark);
+}
+
+.act-date {
+  color: var(--text-light);
+}
+
+.act-desc {
+  color: var(--text-secondary);
+  font-style: italic;
 }
 </style>

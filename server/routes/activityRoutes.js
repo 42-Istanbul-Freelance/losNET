@@ -15,6 +15,9 @@ router.get('/', authenticate, activityController.getActivities);
 // GET /api/activities/pending - Onay bekleyen katılım istekleri (öğretmen/admin)
 router.get('/pending', authenticate, requireRole('teacher', 'admin'), requireApprovedRegistration, activityController.getPendingActivities);
 
+// GET /api/activities/teacher/approved-students - Öğretmenin onayladığı öğrencilerin listesi
+router.get('/teacher/approved-students', authenticate, requireRole('teacher', 'admin'), requireApprovedRegistration, activityController.getApprovedStudentsInfo);
+
 // GET /api/activities/:id - Faaliyet detayı
 router.get('/:id', authenticate, activityController.getActivityById);
 

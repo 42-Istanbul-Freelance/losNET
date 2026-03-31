@@ -459,3 +459,57 @@ exports.updateActivity = async (req, res) => {
         res.status(500).json({ message: 'Faaliyet güncellenirken hata oluştu', error: error.message });
     }
 };
+
+// Öğretmenin onayladığı öğrencilerin özetini getirir
+exports.getApprovedStudentsInfo = async (req, res) => {
+    try {
+        const teacherId = req.user._id;
+
+        const results = await Activity.aggregate([
+            { $match: { 'participantStudents.approvedBy': teacherId, 'participantStudents.participationStatus': 'approved' } },
+            { $unwind: '$participantStudents' },
+            { $match: { 'participantStudents.approvedBy': teacherId, 'participantStudents.participationStatus': 'approved' } },
+            {
+                $group: {
+                    _id: '$participantStudents.student',
+                    totalHours: { $sum: '$hours' },
+                    activityCount: { $sum: 1 },
+                    activities: {
+                        $push: {
+                            _id: '$_id',
+                            title: '$description',
+                            type: '$type',
+                            date: '$date',
+                            hours: '$hours'
+                        }
+                    }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: '_id',
+                    foreignField: '_id',
+                    as: 'studentInfo'
+                }
+            },
+            { $unwind: '$studentInfo' },
+            {
+                $project: {
+                    _id: 1,
+                    totalHours: 1,
+                    activityCount: 1,
+                    activities: 1,
+                    'studentInfo.name': 1,
+                    'studentInfo.email': 1,
+                    'studentInfo.grade': 1
+                }
+            },
+            { $sort: { 'studentInfo.name': 1 } }
+        ]);
+
+        res.json(results);
+    } catch (error) {
+        res.status(500).json({ message: 'Onaylanan öğrenciler getirilirken hata oluştu', error: error.message });
+    }
+};
